@@ -1,6 +1,5 @@
 import React from 'react';
 import { ViewMode } from '../types';
-import { useTheme } from '../context/ThemeContext';
 import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 
 interface TopBarProps {
@@ -18,8 +17,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   onDateChange,
   totalHours,
 }) => {
-  const { themeConfig } = useTheme();
-
   const handlePrevDate = () => {
     const d = new Date(selectedDate);
     if (viewMode === 'day') d.setDate(d.getDate() - 1);
@@ -44,7 +41,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const dayProgressPercent = Math.min(100, Math.round((totalHours / 24) * 100));
 
   const formatDateLabel = () => {
-    if (viewMode === 'global') return 'Historial Completo';
+    if (viewMode === 'global') return 'Todo el Historial';
     const [y, m, d] = selectedDate.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
     if (viewMode === 'day') {
@@ -54,50 +51,27 @@ export const TopBar: React.FC<TopBarProps> = ({
         month: 'short',
       });
     } else if (viewMode === 'week') {
-      return `Sem. ${dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
+      return `Semana del ${dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
     } else {
-      return dateObj.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+      return dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
     }
   };
 
   return (
-    <header
-      className="h-11 px-5 flex items-center justify-between z-30 select-none backdrop-blur-xl border-b transition-colors duration-500"
-      style={{
-        backgroundColor: `${themeConfig.bgCanvas}c0`,
-        borderColor: themeConfig.borderSubtle,
-        color: themeConfig.textPrimary,
-      }}
-    >
+    <header className="h-11 px-6 flex items-center justify-between z-30 select-none bg-[#08090d]/90 backdrop-blur-xl border-b border-white/5 text-gray-200">
       {/* Brand */}
-      <div className="flex items-center gap-2">
-        <span
-          className="font-bold text-sm tracking-tight"
-          style={{ color: themeConfig.textPrimary }}
-        >
+      <div className="flex items-center gap-2.5">
+        <span className="font-semibold text-xs tracking-wider uppercase text-gray-100">
           sharink
         </span>
-        <span
-          className="text-[9px] font-mono px-1 rounded uppercase tracking-wider"
-          style={{
-            backgroundColor: `${themeConfig.accent}15`,
-            color: themeConfig.accent,
-          }}
-        >
-          {themeConfig.badge}
-        </span>
+        <span className="w-1 h-1 rounded-full bg-indigo-500/80" />
+        <span className="text-[10px] text-gray-500 font-mono">espacio vital</span>
       </div>
 
       {/* Center: View Modes & Date */}
       <div className="flex items-center gap-2">
         {/* Segmented Modes */}
-        <div
-          className="flex p-0.5 rounded-full border text-[11px]"
-          style={{
-            backgroundColor: `${themeConfig.bgSurface}90`,
-            borderColor: themeConfig.borderSubtle,
-          }}
-        >
+        <div className="flex p-0.5 rounded-full bg-[#12141c] border border-white/5 text-[11px]">
           {(['day', 'week', 'month', 'global'] as ViewMode[]).map((mode) => {
             const labels: Record<ViewMode, string> = {
               day: 'Día',
@@ -110,13 +84,11 @@ export const TopBar: React.FC<TopBarProps> = ({
               <button
                 key={mode}
                 onClick={() => onViewModeChange(mode)}
-                className={`px-2.5 py-0.5 rounded-full font-medium transition-all ${
-                  isActive ? 'shadow-sm' : 'hover:opacity-75'
+                className={`px-3 py-0.5 rounded-full font-medium transition-all ${
+                  isActive
+                    ? 'bg-[#1e2230] text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200'
                 }`}
-                style={{
-                  backgroundColor: isActive ? themeConfig.bgElevated : 'transparent',
-                  color: isActive ? themeConfig.textPrimary : themeConfig.textMuted,
-                }}
               >
                 {labels[mode]}
               </button>
@@ -124,33 +96,24 @@ export const TopBar: React.FC<TopBarProps> = ({
           })}
         </div>
 
-        {/* Date Controls */}
+        {/* Date Navigator */}
         {viewMode !== 'global' && (
-          <div
-            className="flex items-center rounded-full border px-1 py-0.5 text-[11px]"
-            style={{
-              backgroundColor: `${themeConfig.bgSurface}90`,
-              borderColor: themeConfig.borderSubtle,
-            }}
-          >
+          <div className="flex items-center rounded-full bg-[#12141c] border border-white/5 px-1 py-0.5 text-[11px]">
             <button
               onClick={handlePrevDate}
-              className="p-1 rounded-full hover:opacity-75"
-              style={{ color: themeConfig.textSecondary }}
+              className="p-1 rounded-full text-gray-400 hover:text-white transition-colors"
             >
               <ChevronLeft size={13} />
             </button>
             <button
               onClick={handleToday}
-              className="px-2 font-mono font-medium hover:opacity-75"
-              style={{ color: themeConfig.textPrimary }}
+              className="px-2 font-mono text-gray-200 hover:text-white transition-colors"
             >
               {formatDateLabel()}
             </button>
             <button
               onClick={handleNextDate}
-              className="p-1 rounded-full hover:opacity-75"
-              style={{ color: themeConfig.textSecondary }}
+              className="p-1 rounded-full text-gray-400 hover:text-white transition-colors"
             >
               <ChevronRight size={13} />
             </button>
@@ -163,26 +126,16 @@ export const TopBar: React.FC<TopBarProps> = ({
         <div className="flex items-center gap-2">
           {isDayOverLimit && <AlertTriangle size={13} className="text-amber-400" />}
           <div className="flex items-baseline gap-1 text-xs font-mono">
-            <span className="font-semibold" style={{ color: themeConfig.textPrimary }}>
-              {totalHours.toFixed(1)}h
-            </span>
-            {viewMode === 'day' && (
-              <span className="text-[10px]" style={{ color: themeConfig.textMuted }}>
-                / 24h
-              </span>
-            )}
+            <span className="font-semibold text-gray-200">{totalHours.toFixed(1)}h</span>
+            {viewMode === 'day' && <span className="text-[10px] text-gray-500">/ 24h</span>}
           </div>
           {viewMode === 'day' && (
-            <div
-              className="w-12 h-1 rounded-full overflow-hidden"
-              style={{ backgroundColor: `${themeConfig.borderStrong}` }}
-            >
+            <div className="w-12 h-1 rounded-full bg-white/10 overflow-hidden">
               <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${dayProgressPercent}%`,
-                  backgroundColor: isDayOverLimit ? '#f59e0b' : themeConfig.accent,
-                }}
+                className={`h-full rounded-full transition-all ${
+                  isDayOverLimit ? 'bg-amber-500' : 'bg-indigo-500'
+                }`}
+                style={{ width: `${dayProgressPercent}%` }}
               />
             </div>
           )}

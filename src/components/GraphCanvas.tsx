@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { Activity, LifeArea, ViewportSettings, ActivityNode } from '../types';
-import { getTemperatureColor, getTemperatureLabel } from '../utils/colors';
-import { useTheme } from '../context/ThemeContext';
-import { ZoomIn, ZoomOut, RotateCcw, Pause, Play, Layers } from 'lucide-react';
+import { getNodeShading, getTemperatureLabel } from '../utils/colors';
+import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 interface GraphCanvasProps {
   activities: Activity[];
@@ -26,12 +25,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   settings,
   onSelectActivity,
 }) => {
-  const { theme, themeConfig } = useTheme();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [hovered, setHovered] = useState<HoverInfo | null>(null);
-  const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [showMiniLegend, setShowMiniLegend] = useState<boolean>(false);
 
   // Map areas by ID
   const areaMap = useMemo(() => {
@@ -40,7 +36,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     return map;
   }, [areas]);
 
-  // Filter activities
+  // Filter activities based on visibility and active filters
   const visibleActivities = useMemo(() => {
     return activities.filter((act) => {
       const hasVisibleArea = act.areaIds.some((id) => {
@@ -59,19 +55,19 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const nodesRef = useRef<ActivityNode[]>([]);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
-  // Simulation Setup
+  // Layout & Simulation setup (Pure spatial clustering, no hulls, no node dragging)
   useEffect(() => {
     if (!svgRef.current || !containerRef.current) return;
 
-    const width = containerRef.current.clientWidth || 800;
-    const height = containerRef.current.clientHeight || 600;
+    const width = containerRef.current.clientWidth || 900;
+    const height = containerRef.current.clientHeight || 700;
     const centerX = width / 2;
     const centerY = height / 2;
 
     const activeAreas = areas.filter((a) => a.visible);
     const areaCentroids = new Map<string, { x: number; y: number }>();
     const angleStep = (2 * Math.PI) / (activeAreas.length || 1);
-    const orbitRadius = Math.min(width, height) * 0.30;
+    const orbitRadius = Math.min(width, height) * 0.32;
 
     activeAreas.forEach((area, index) => {
       const angle = index * angleStep - Math.PI / 2;
@@ -86,10 +82,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
     const newNodes: ActivityNode[] = visibleActivities.map((act) => {
       const prev = prevNodesMap.get(act.id);
-      // Ethereal scaling: clean proportions
-      const radius = Math.max(18, Math.min(54, 15 + Math.sqrt(Math.max(0.2, act.hours)) * 13));
-      const color = getTemperatureColor(act.temperature, theme);
+      // Harmonious radius scale
+      const radius = Math.max(16, Math.min(48, 14 + Math.sqrt(Math.max(0.2, act.hours)) * 12));
 
+      // Calculate target centroid for spatial attraction
       let targetX = centerX;
       let targetY = centerY;
       if (act.areaIds.length > 0) {
@@ -114,9 +110,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         id: act.id,
         activity: act,
         radius,
-        color,
-        x: prev?.x ?? targetX + (Math.random() - 0.5) * 60,
-        y: prev?.y ?? targetY + (Math.random() - 0.5) * 60,
+        color: '', // handled via radial gradient
+        x: prev?.x ?? targetX + (Math.random() - 0.5) * 40,
+        y: prev?.y ?? targetY + (Math.random() - 0.5) * 40,
         vx: prev?.vx ?? 0,
         vy: prev?.vy ?? 0,
       };
@@ -124,12 +120,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
     nodesRef.current = newNodes;
 
+    // Fast-converging simulation that settles naturally into fixed harmonic positions
     const simulation = d3
       .forceSimulation<ActivityNode>(newNodes)
-      .force('charge', d3.forceManyBody().strength(-150).distanceMax(400))
+      .force('charge', d3.forceManyBody().strength(-120).distanceMax(380))
       .force(
         'collision',
-        d3.forceCollide<ActivityNode>().radius((d) => d.radius + 10).iterations(3)
+        d3.forceCollide<ActivityNode>().radius((d) => d.radius + 12).iterations(3)
       )
       .force(
         'x',
@@ -145,7 +142,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             }
           });
           return count > 0 ? sum / count : centerX;
-        }).strength(0.14)
+        }).strength(0.18)
       )
       .force(
         'y',
@@ -161,19 +158,20 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             }
           });
           return count > 0 ? sum / count : centerY;
-        }).strength(0.14)
+        }).strength(0.18)
       )
-      .alphaDecay(0.02)
-      .velocityDecay(0.38);
+      .alphaDecay(0.04) // Converges quickly to stable equilibrium
+      .velocityDecay(0.45);
 
     simulationRef.current = simulation;
 
     const svg = d3.select(svgRef.current);
     const g = svg.select<SVGGElement>('#graph-container');
 
+    // Zoom & Pan on the background
     const zoomBehavior = d3
       .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.25, 4.0])
+      .scaleExtent([0.3, 3.5])
       .on('zoom', (event) => {
         g.attr('transform', event.transform.toString());
       });
@@ -181,11 +179,33 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     zoomBehaviorRef.current = zoomBehavior;
     svg.call(zoomBehavior);
 
-    simulation.on('tick', () => {
-      // 1. Fluid Ultra-thin Area Hulls
-      renderFluidAreaHulls(g, activeAreas, newNodes, settings.showAreaHulls);
+    // Render subtle area labels in the background at their centroid
+    const areaLabelsGroup = g.select<SVGGElement>('#area-labels-group');
+    const areaLabelsData = activeAreas.map((area) => ({
+      area,
+      pos: areaCentroids.get(area.id) || { x: centerX, y: centerY },
+    }));
 
-      // 2. Constellation Nodes
+    const labelSelection = areaLabelsGroup
+      .selectAll<SVGTextElement, { area: LifeArea; pos: { x: number; y: number } }>('.area-watermark')
+      .data(areaLabelsData, (d) => d.area.id);
+
+    labelSelection.exit().remove();
+
+    labelSelection
+      .enter()
+      .append('text')
+      .attr('class', 'area-watermark pointer-events-none font-mono text-[10px] tracking-widest uppercase')
+      .attr('text-anchor', 'middle')
+      .attr('fill', (d) => d.area.color)
+      .attr('fill-opacity', 0.18)
+      .merge(labelSelection)
+      .attr('x', (d) => d.pos.x)
+      .attr('y', (d) => d.pos.y - 65)
+      .text((d) => d.area.name);
+
+    // Tick Handler
+    simulation.on('tick', () => {
       const nodeSelection = g
         .select<SVGGElement>('#nodes-group')
         .selectAll<SVGGElement, ActivityNode>('.activity-node')
@@ -193,116 +213,107 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
       nodeSelection.exit().remove();
 
+      // Enter new nodes (NO DRAGGING: purely contemplative and stable)
       const enter = nodeSelection
         .enter()
         .append('g')
-        .attr('class', 'activity-node cursor-pointer select-none')
-        .call(
-          d3
-            .drag<SVGGElement, ActivityNode>()
-            .on('start', (event, d) => {
-              if (!event.active) simulation.alphaTarget(0.3).restart();
-              d.fx = d.x;
-              d.fy = d.y;
-            })
-            .on('drag', (event, d) => {
-              d.fx = event.x;
-              d.fy = event.y;
-            })
-            .on('end', (event, d) => {
-              if (!event.active) simulation.alphaTarget(0);
-              d.fx = null;
-              d.fy = null;
-            })
-        );
+        .attr('class', 'activity-node cursor-pointer select-none');
 
-      // Subtle atmospheric aura (ambient glow on hover)
+      // 1. OPTICAL BLOOM (True optical diffusion with radial fade + Gaussian blur)
       enter
         .append('circle')
-        .attr('class', 'node-aura pointer-events-none transition-all duration-300')
-        .attr('fill', (d) => d.color)
+        .attr('class', 'node-bloom pointer-events-none transition-all duration-300')
+        .attr('filter', 'url(#optical-blur)')
         .attr('opacity', 0);
 
-      // Multi-area delicate outer ring (1px)
+      // 2. MAIN SPHERICAL NODE with radial depth (No MS Paint bucket fill!)
       enter
         .append('circle')
-        .attr('class', 'node-subring pointer-events-none')
+        .attr('class', 'node-body transition-transform duration-200');
+
+      // 3. ULTRA-THIN GLASS PERIMETER RING (0.5px)
+      enter
+        .append('circle')
+        .attr('class', 'node-glass-ring pointer-events-none')
+        .attr('fill', 'none')
+        .attr('stroke', 'rgba(255, 255, 255, 0.14)')
+        .attr('stroke-width', 0.5);
+
+      // 4. MULTI-AREA SUBTLE ACCENT PINPOINT (Only if multi-area)
+      enter
+        .append('circle')
+        .attr('class', 'node-multi-pin pointer-events-none')
         .attr('fill', 'none')
         .attr('stroke-width', 1)
-        .attr('stroke-opacity', 0.4);
+        .attr('stroke-dasharray', '2 3')
+        .attr('opacity', 0.4);
 
-      // Main matte circular node
-      enter
-        .append('circle')
-        .attr('class', 'node-body transition-transform duration-200')
-        .attr('stroke', themeConfig.textPrimary)
-        .attr('stroke-width', 0.75)
-        .attr('stroke-opacity', 0.25);
-
-      // Activity Name Label (Clean typography)
+      // 5. ACTIVITY NAME (Crisp micro-typography)
       enter
         .append('text')
-        .attr('class', 'node-label pointer-events-none font-medium text-center select-none')
+        .attr('class', 'node-label pointer-events-none font-sans font-medium text-center select-none fill-white')
         .attr('text-anchor', 'middle')
         .attr('dy', '0.35em');
 
-      // Hours indicator
+      // 6. HOURS MICRO-BADGE
       enter
         .append('text')
-        .attr('class', 'node-hours pointer-events-none text-[10px] select-none')
+        .attr('class', 'node-hours pointer-events-none text-[9px] font-mono select-none fill-gray-400')
         .attr('text-anchor', 'middle')
-        .attr('dy', '1.55em');
+        .attr('dy', '1.6em');
 
       const allNodes = enter.merge(nodeSelection);
 
       allNodes.attr('transform', (d) => `translate(${d.x || 0}, ${d.y || 0})`);
 
+      // Set optical bloom
       allNodes
-        .select('.node-aura')
-        .attr('r', (d) => d.radius + 10)
-        .attr('fill', (d) => d.color);
+        .select('.node-bloom')
+        .attr('r', (d) => d.radius + 14)
+        .attr('fill', (d) => `url(#bloom-grad-${d.id})`);
 
+      // Set multi-stop radial gradient fill
       allNodes
-        .select('.node-subring')
-        .attr('r', (d) => d.radius + 3)
+        .select('.node-body')
+        .attr('r', (d) => d.radius)
+        .attr('fill', (d) => `url(#sphere-grad-${d.id})`);
+
+      // Glass ring
+      allNodes
+        .select('.node-glass-ring')
+        .attr('r', (d) => d.radius);
+
+      // Multi-area ring
+      allNodes
+        .select('.node-multi-pin')
+        .attr('r', (d) => d.radius + 2.5)
         .attr('stroke', (d) => {
           if (d.activity.areaIds.length > 1) {
-            const a2 = areaMap.get(d.activity.areaIds[1]);
-            return a2 ? a2.color : d.color;
+            const secondArea = areaMap.get(d.activity.areaIds[1]);
+            return secondArea ? secondArea.color : 'transparent';
           }
           return 'transparent';
         });
 
-      allNodes
-        .select('.node-body')
-        .attr('r', (d) => d.radius)
-        .attr('fill', (d) => d.color)
-        .attr('fill-opacity', 0.88)
-        .attr('stroke', themeConfig.textPrimary);
-
+      // Label
       allNodes
         .select('.node-label')
         .style('display', settings.showLabels ? 'block' : 'none')
-        .style('font-size', (d) => `${Math.max(10, Math.min(12, d.radius * 0.42))}px`)
-        .attr('fill', '#ffffff')
-        .attr('fill-opacity', 0.95)
-        .attr('class', `node-label pointer-events-none font-medium text-center ${themeConfig.fontFamily}`)
+        .style('font-size', (d) => `${Math.max(9.5, Math.min(11.5, d.radius * 0.4))}px`)
         .text((d) => {
-          const maxChars = Math.floor(d.radius / 3.4);
+          const maxChars = Math.floor(d.radius / 3.3);
           return d.activity.name.length > maxChars
             ? d.activity.name.slice(0, maxChars) + '…'
             : d.activity.name;
         });
 
+      // Hours
       allNodes
         .select('.node-hours')
         .style('display', settings.showLabels && settings.viewMode !== 'global' ? 'block' : 'none')
-        .attr('fill', '#ffffff')
-        .attr('fill-opacity', 0.6)
-        .attr('class', `node-hours pointer-events-none text-[10px] ${themeConfig.fontFamily}`)
         .text((d) => `${d.activity.hours}h`);
 
-      // Mouse events
+      // Hover and Click events (Gentle optical bloom activation)
       allNodes
         .on('mouseenter', (event, d) => {
           const rect = containerRef.current?.getBoundingClientRect();
@@ -313,20 +324,27 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               activity: d.activity,
             });
           }
-          // Activate delicate aura on hover
-          d3.select(event.currentTarget)
-            .select('.node-aura')
-            .transition()
-            .duration(200)
-            .attr('opacity', 0.28)
-            .attr('r', d.radius + 14);
 
+          // Fade-in optical bloom smoothly
+          d3.select(event.currentTarget)
+            .select('.node-bloom')
+            .transition()
+            .duration(220)
+            .attr('opacity', 0.85);
+
+          // Subtle micro-expansion of the node body
           d3.select(event.currentTarget)
             .select('.node-body')
             .transition()
-            .duration(150)
-            .attr('fill-opacity', 1)
-            .attr('stroke-opacity', 0.6);
+            .duration(180)
+            .attr('r', d.radius * 1.08);
+
+          d3.select(event.currentTarget)
+            .select('.node-glass-ring')
+            .transition()
+            .duration(180)
+            .attr('r', d.radius * 1.08)
+            .attr('stroke', 'rgba(255, 255, 255, 0.4)');
         })
         .on('mousemove', (event) => {
           const rect = containerRef.current?.getBoundingClientRect();
@@ -338,19 +356,26 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         })
         .on('mouseleave', (event, d) => {
           setHovered(null);
+
+          // Fade-out optical bloom
           d3.select(event.currentTarget)
-            .select('.node-aura')
+            .select('.node-bloom')
             .transition()
             .duration(200)
-            .attr('opacity', 0)
-            .attr('r', d.radius + 10);
+            .attr('opacity', 0);
 
           d3.select(event.currentTarget)
             .select('.node-body')
             .transition()
-            .duration(150)
-            .attr('fill-opacity', 0.88)
-            .attr('stroke-opacity', 0.25);
+            .duration(180)
+            .attr('r', d.radius);
+
+          d3.select(event.currentTarget)
+            .select('.node-glass-ring')
+            .transition()
+            .duration(180)
+            .attr('r', d.radius)
+            .attr('stroke', 'rgba(255, 255, 255, 0.14)');
         })
         .on('click', (_event, d) => {
           onSelectActivity(d.activity);
@@ -360,96 +385,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     return () => {
       simulation.stop();
     };
-  }, [visibleActivities, areas, settings, onSelectActivity, areaMap, theme, themeConfig]);
+  }, [visibleActivities, areas, settings, onSelectActivity, areaMap]);
 
-  // Fluid Ultra-thin Spline Area Delimitation
-  const renderFluidAreaHulls = (
-    g: d3.Selection<SVGGElement, unknown, null, undefined>,
-    activeAreas: LifeArea[],
-    currentNodes: ActivityNode[],
-    showHulls: boolean
-  ) => {
-    const hullsGroup = g.select<SVGGElement>('#hulls-group');
-
-    if (!showHulls) {
-      hullsGroup.selectAll('*').remove();
-      return;
-    }
-
-    const hullData: Array<{ area: LifeArea; path: string }> = [];
-
-    activeAreas.forEach((area) => {
-      const nodesInArea = currentNodes.filter(
-        (n) => n.activity.areaIds.includes(area.id) && n.x != null && n.y != null
-      );
-
-      if (nodesInArea.length === 0) return;
-
-      const padding = 38;
-
-      if (nodesInArea.length === 1) {
-        const n = nodesInArea[0];
-        const r = n.radius + padding;
-        const p = `M ${n.x! - r}, ${n.y!} a ${r},${r} 0 1,0 ${r * 2},0 a ${r},${r} 0 1,0 -${r * 2},0`;
-        hullData.push({ area, path: p });
-      } else if (nodesInArea.length === 2) {
-        const n1 = nodesInArea[0];
-        const n2 = nodesInArea[1];
-        const dx = n2.x! - n1.x!;
-        const dy = n2.y! - n1.y!;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const r1 = n1.radius + padding;
-        const r2 = n2.radius + padding;
-        const nx = -dy / dist;
-        const ny = dx / dist;
-
-        const p =
-          `M ${n1.x! + nx * r1} ${n1.y! + ny * r1} ` +
-          `L ${n2.x! + nx * r2} ${n2.y! + ny * r2} ` +
-          `A ${r2} ${r2} 0 0 1 ${n2.x! - nx * r2} ${n2.y! - ny * r2} ` +
-          `L ${n1.x! - nx * r1} ${n1.y! - ny * r1} ` +
-          `A ${r1} ${r1} 0 0 1 ${n1.x! + nx * r1} ${n1.y! + ny * r1} Z`;
-        hullData.push({ area, path: p });
-      } else {
-        const points: [number, number][] = [];
-        nodesInArea.forEach((n) => {
-          const r = n.radius + padding;
-          for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
-            points.push([n.x! + Math.cos(a) * r, n.y! + Math.sin(a) * r]);
-          }
-        });
-
-        const hull = d3.polygonHull(points);
-        if (hull) {
-          const curve = d3.line().curve(d3.curveCatmullRomClosed);
-          const path = curve(hull);
-          if (path) {
-            hullData.push({ area, path });
-          }
-        }
-      }
-    });
-
-    const hullSel = hullsGroup
-      .selectAll<SVGPathElement, { area: LifeArea; path: string }>('.area-hull')
-      .data(hullData, (d) => d.area.id);
-
-    hullSel.exit().remove();
-
-    hullSel
-      .enter()
-      .append('path')
-      .attr('class', 'area-hull transition-all duration-500 pointer-events-none')
-      .merge(hullSel)
-      .attr('d', (d) => d.path)
-      .attr('fill', (d) => d.area.color)
-      .attr('fill-opacity', 0.03) // Ethereal subtle fill
-      .attr('stroke', (d) => d.area.color)
-      .attr('stroke-width', 1) // Ultra-thin 1px stroke
-      .attr('stroke-opacity', 0.22);
-  };
-
-  // Zoom controls
+  // Zoom actions
   const handleZoomIn = () => {
     if (svgRef.current && zoomBehaviorRef.current) {
       d3.select(svgRef.current).transition().duration(250).call(zoomBehaviorRef.current.scaleBy, 1.3);
@@ -466,159 +404,101 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     if (svgRef.current && zoomBehaviorRef.current) {
       d3.select(svgRef.current)
         .transition()
-        .duration(400)
+        .duration(350)
         .call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
-    }
-  };
-
-  const handleToggleSimulation = () => {
-    if (!simulationRef.current) return;
-    if (isPaused) {
-      simulationRef.current.alphaTarget(0.1).restart();
-      setIsPaused(false);
-    } else {
-      simulationRef.current.stop();
-      setIsPaused(true);
     }
   };
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden transition-colors duration-500"
-      style={{ backgroundColor: themeConfig.bgCanvas }}
+      className="relative w-full h-full overflow-hidden bg-[#08090d]"
     >
-      {/* SVG Canvas */}
-      <svg ref={svgRef} className="w-full h-full cursor-crosshair">
+      <svg ref={svgRef} className="w-full h-full cursor-default">
+        <defs>
+          {/* Real Optical Gaussian Blur Filter */}
+          <filter id="optical-blur" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="7" result="blur" />
+          </filter>
+
+          {/* Dynamic multi-stop radial gradients for each activity */}
+          {visibleActivities.map((act) => {
+            const shading = getNodeShading(act.temperature);
+            return (
+              <React.Fragment key={act.id}>
+                {/* 1. Deep Celestial Sphere Gradient */}
+                <radialGradient
+                  id={`sphere-grad-${act.id}`}
+                  cx="36%"
+                  cy="36%"
+                  r="64%"
+                >
+                  <stop offset="0%" stopColor={shading.coreColor} stopOpacity="0.95" />
+                  <stop offset="42%" stopColor={shading.midColor} stopOpacity="0.88" />
+                  <stop offset="100%" stopColor={shading.darkColor} stopOpacity="0.98" />
+                </radialGradient>
+
+                {/* 2. Optical Bloom Diffusion Gradient (Exponential decay) */}
+                <radialGradient
+                  id={`bloom-grad-${act.id}`}
+                  cx="50%"
+                  cy="50%"
+                  r="50%"
+                >
+                  <stop offset="0%" stopColor={shading.glowColor} stopOpacity="0.45" />
+                  <stop offset="45%" stopColor={shading.glowColor} stopOpacity="0.18" />
+                  <stop offset="100%" stopColor={shading.glowColor} stopOpacity="0" />
+                </radialGradient>
+              </React.Fragment>
+            );
+          })}
+        </defs>
+
         <g id="graph-container">
-          <g id="hulls-group" />
+          {/* Subtle area watermarks */}
+          <g id="area-labels-group" />
+          {/* Nodes */}
           <g id="nodes-group" />
         </g>
       </svg>
 
-      {/* Floating Canvas Quick Controls (Minimal Pill in bottom-left) */}
-      <div
-        className="absolute bottom-6 left-6 flex items-center gap-1 p-1 rounded-full backdrop-blur-xl transition-all duration-300 z-20 shadow-lg"
-        style={{
-          backgroundColor: `${themeConfig.bgSurface}cc`,
-          border: `1px solid ${themeConfig.borderSubtle}`,
-        }}
-      >
+      {/* Floating Canvas Controls (Ultra-minimal bottom-left) */}
+      <div className="absolute bottom-6 left-6 flex items-center gap-1 p-1 rounded-full bg-[#101218]/80 backdrop-blur-xl border border-white/5 shadow-xl z-20">
         <button
           onClick={handleZoomIn}
           title="Zoom In"
-          className="p-2 rounded-full hover:opacity-80 transition-opacity"
-          style={{ color: themeConfig.textSecondary }}
+          className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
         >
           <ZoomIn size={14} />
         </button>
         <button
           onClick={handleZoomOut}
           title="Zoom Out"
-          className="p-2 rounded-full hover:opacity-80 transition-opacity"
-          style={{ color: themeConfig.textSecondary }}
+          className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
         >
           <ZoomOut size={14} />
         </button>
         <button
           onClick={handleResetView}
-          title="Centrar"
-          className="p-2 rounded-full hover:opacity-80 transition-opacity"
-          style={{ color: themeConfig.textSecondary }}
+          title="Centrar Vista"
+          className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
         >
           <RotateCcw size={14} />
         </button>
-        <div className="w-[1px] h-3.5 mx-0.5" style={{ backgroundColor: themeConfig.borderSubtle }} />
-        <button
-          onClick={handleToggleSimulation}
-          title={isPaused ? 'Reanudar física (Espacio)' : 'Pausar física (Espacio)'}
-          className="p-2 rounded-full transition-colors"
-          style={{ color: isPaused ? themeConfig.accent : themeConfig.textSecondary }}
-        >
-          {isPaused ? <Play size={14} /> : <Pause size={14} />}
-        </button>
-        <div className="w-[1px] h-3.5 mx-0.5" style={{ backgroundColor: themeConfig.borderSubtle }} />
-        <button
-          onClick={() => setShowMiniLegend((prev) => !prev)}
-          title="Leyenda de Aspectos"
-          className="p-2 rounded-full hover:opacity-80 transition-opacity"
-          style={{ color: showMiniLegend ? themeConfig.accent : themeConfig.textSecondary }}
-        >
-          <Layers size={14} />
-        </button>
       </div>
 
-      {/* Minimal Floating Legend Drawer (Toggleable) */}
-      {showMiniLegend && (
-        <div
-          className="absolute bottom-16 left-6 p-3 rounded-2xl backdrop-blur-xl border z-20 shadow-2xl space-y-2 animate-fadeIn max-w-xs"
-          style={{
-            backgroundColor: `${themeConfig.bgSurface}f0`,
-            borderColor: themeConfig.borderSubtle,
-          }}
-        >
-          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider" style={{ color: themeConfig.textMuted }}>
-            <span>Aspectos de Vida</span>
-            <span>{areas.filter((a) => a.visible).length}</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {areas.map((area) => {
-              const count = activities.filter((a) => a.areaIds.includes(area.id)).length;
-              return (
-                <div
-                  key={area.id}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs"
-                  style={{
-                    backgroundColor: `${themeConfig.bgElevated}90`,
-                    border: `1px solid ${themeConfig.borderSubtle}`,
-                    color: themeConfig.textSecondary,
-                  }}
-                >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: area.color }} />
-                  <span>{area.name}</span>
-                  <span className="text-[10px] opacity-60">({count})</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* EM Scale hint */}
-          <div className="pt-2 border-t" style={{ borderColor: themeConfig.borderSubtle }}>
-            <div className="flex justify-between text-[10px] mb-1" style={{ color: themeConfig.textMuted }}>
-              <span>Drenante (-5)</span>
-              <span>Neutro (0)</span>
-              <span>Flujo (+5)</span>
-            </div>
-            <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-rose-500 via-slate-400 to-indigo-500 opacity-80" />
-          </div>
-        </div>
-      )}
-
-      {/* Subtle Ethereal Tooltip Card */}
+      {/* Subtle Hover Inspection Card */}
       {hovered && (
         <div
           className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-[120%] transition-transform duration-75"
           style={{ left: hovered.x, top: hovered.y }}
         >
-          <div
-            className="p-3 rounded-xl backdrop-blur-2xl shadow-2xl text-xs space-y-2 min-w-[190px] border"
-            style={{
-              backgroundColor: `${themeConfig.bgSurface}f5`,
-              borderColor: themeConfig.borderStrong,
-              color: themeConfig.textPrimary,
-            }}
-          >
+          <div className="p-3 rounded-xl bg-[#101218]/95 backdrop-blur-2xl border border-white/10 shadow-2xl text-xs space-y-2 min-w-[190px] text-gray-100">
             <div className="flex items-center justify-between gap-3">
-              <span className="font-semibold text-sm tracking-tight">
+              <span className="font-semibold text-xs tracking-tight text-white">
                 {hovered.activity.name}
               </span>
-              <span
-                className="px-2 py-0.5 rounded text-xs font-mono font-bold"
-                style={{
-                  backgroundColor: `${themeConfig.bgElevated}`,
-                  color: themeConfig.accent,
-                }}
-              >
+              <span className="px-1.5 py-0.5 rounded text-[11px] font-mono font-bold bg-white/5 text-cyan-300 border border-white/10">
                 {hovered.activity.hours}h
               </span>
             </div>
@@ -630,11 +510,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 return (
                   <span
                     key={aid}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]"
-                    style={{
-                      backgroundColor: `${themeConfig.bgElevated}90`,
-                      color: themeConfig.textSecondary,
-                    }}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] bg-white/5 text-gray-300 border border-white/5"
                   >
                     <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: area.color }} />
                     {area.name}
@@ -643,15 +519,12 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               })}
             </div>
 
-            <div
-              className="flex items-center justify-between pt-1.5 border-t text-[11px]"
-              style={{ borderColor: themeConfig.borderSubtle }}
-            >
-              <span style={{ color: themeConfig.textMuted }}>Impacto:</span>
+            <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[10.5px]">
+              <span className="text-gray-500">Impacto:</span>
               <div className="flex items-center gap-1.5">
                 <span
                   className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: getTemperatureColor(hovered.activity.temperature, theme) }}
+                  style={{ backgroundColor: getNodeShading(hovered.activity.temperature).midColor }}
                 />
                 <span className={`font-medium ${getTemperatureLabel(hovered.activity.temperature).textClass}`}>
                   {hovered.activity.temperature > 0 ? `+${hovered.activity.temperature}` : hovered.activity.temperature}
@@ -660,13 +533,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             </div>
 
             {hovered.activity.notes && (
-              <p
-                className="text-[11px] italic pl-2 border-l"
-                style={{
-                  borderColor: themeConfig.borderStrong,
-                  color: themeConfig.textSecondary,
-                }}
-              >
+              <p className="text-[10px] italic pl-2 border-l border-white/10 text-gray-400">
                 "{hovered.activity.notes}"
               </p>
             )}

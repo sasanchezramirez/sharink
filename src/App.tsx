@@ -7,27 +7,23 @@ import {
   saveAreas,
   getTodayDateString,
 } from './utils/storage';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { GraphCanvas } from './components/GraphCanvas';
 import { TopBar } from './components/TopBar';
 import { FloatingDock } from './components/FloatingDock';
 import { EditActivityModal } from './components/EditActivityModal';
 
-const SharinkMain: React.FC = () => {
-  const { themeConfig } = useTheme();
+export const App: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [areas, setAreas] = useState<LifeArea[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
-  const [activePopover, setActivePopover] = useState<
-    'activity' | 'areas' | 'filters' | 'themes' | null
-  >(null);
+  const [activePopover, setActivePopover] = useState<'activity' | 'areas' | 'filters' | null>(null);
 
   // Viewport Settings
   const [settings, setSettings] = useState<ViewportSettings>({
     viewMode: 'day',
     selectedDate: getTodayDateString(),
     showLabels: true,
-    showAreaHulls: true,
+    showAreaHulls: false, // Hulls removed in V2
     activeAreaFilters: [],
   });
 
@@ -119,10 +115,7 @@ const SharinkMain: React.FC = () => {
   };
 
   return (
-    <div
-      className={`flex flex-col h-screen w-screen overflow-hidden ${themeConfig.fontFamily}`}
-      style={{ backgroundColor: themeConfig.bgCanvas, color: themeConfig.textPrimary }}
-    >
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#08090d] text-gray-200 font-sans">
       {/* Top Header */}
       <TopBar
         viewMode={settings.viewMode}
@@ -132,7 +125,7 @@ const SharinkMain: React.FC = () => {
         totalHours={totalHours}
       />
 
-      {/* Main Fullscreen Canvas */}
+      {/* Main Pure Spatial Canvas */}
       <main className="flex-1 w-full h-[calc(100vh-2.75rem)] relative overflow-hidden">
         <GraphCanvas
           activities={currentFilteredActivities}
@@ -166,13 +159,5 @@ const SharinkMain: React.FC = () => {
         onDeleteActivity={handleDeleteActivity}
       />
     </div>
-  );
-};
-
-export const App: React.FC = () => {
-  return (
-    <ThemeProvider>
-      <SharinkMain />
-    </ThemeProvider>
   );
 };

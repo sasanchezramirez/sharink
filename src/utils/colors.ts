@@ -1,55 +1,56 @@
 import { interpolateRgb } from 'd3';
-import { ThemeMode } from '../context/ThemeContext';
+
+export interface NodeShading {
+  coreColor: string;
+  midColor: string;
+  darkColor: string;
+  glowColor: string;
+}
 
 /**
- * Electromagnetic-inspired Temperature Scale:
- * Refined, non-garish palette:
- * -5 (Negative / Draining): Muted Crimson (#e11d48)
- * -2.5 (Demanding): Warm Ochre (#d97706)
- *  0 (Neutral / Equilibrium): Sage / Slate (#64748b)
- * +2.5 (Engaging): Soft Teal (#14b8a6)
- * +5 (Positive / Flow): Deep Azure (#2563eb) to Cosmic Indigo (#4f46e5)
+ * Optical Electromagnetic spectrum color mapping.
+ * Generates 3 stops for realistic depth:
+ * 0% Luminous Core -> 70% Body Tone -> 100% Deep Edge
  */
-export function getTemperatureColor(score: number, theme: ThemeMode = 'linear'): string {
+export function getNodeShading(score: number): NodeShading {
   const clamped = Math.max(-5, Math.min(5, score));
-  const norm = (clamped + 5) / 10; // 0 to 1
+  const norm = (clamped + 5) / 10; // 0 (Red) to 1 (Blue)
 
-  if (theme === 'hacker') {
-    // Hacker theme EM spectrum: Amber/Phosphor Red (-5) to Lime/Green/Cyan (+5)
-    if (norm <= 0.5) {
-      const t = norm / 0.5;
-      return interpolateRgb('#ef4444', '#f59e0b')(t);
-    } else {
-      const t = (norm - 0.5) / 0.5;
-      return interpolateRgb('#f59e0b', '#22c55e')(t);
-    }
-  }
-
-  if (theme === 'editorial') {
-    // Monochromatic / Architectural high-contrast precision
-    if (norm <= 0.5) {
-      const t = norm / 0.5;
-      return interpolateRgb('#71717a', '#a1a1aa')(t);
-    } else {
-      const t = (norm - 0.5) / 0.5;
-      return interpolateRgb('#a1a1aa', '#f4f4f5')(t);
-    }
-  }
-
-  // Linear & Zen default palette
+  // Mid tone interpolation
+  let midColor: string;
   if (norm <= 0.25) {
-    const t = norm / 0.25;
-    return interpolateRgb('#e11d48', '#ea580c')(t);
+    midColor = interpolateRgb('#e11d48', '#ea580c')(norm / 0.25);
   } else if (norm <= 0.5) {
-    const t = (norm - 0.25) / 0.25;
-    return interpolateRgb('#ea580c', '#64748b')(t);
+    midColor = interpolateRgb('#ea580c', '#64748b')((norm - 0.25) / 0.25);
   } else if (norm <= 0.75) {
-    const t = (norm - 0.5) / 0.25;
-    return interpolateRgb('#64748b', '#0ea5e9')(t);
+    midColor = interpolateRgb('#64748b', '#0ea5e9')((norm - 0.5) / 0.25);
   } else {
-    const t = (norm - 0.75) / 0.25;
-    return interpolateRgb('#0ea5e9', '#6366f1')(t);
+    midColor = interpolateRgb('#0ea5e9', '#4f46e5')((norm - 0.75) / 0.25);
   }
+
+  // Core color (illuminated highlight center)
+  let coreColor: string;
+  if (norm <= 0.3) {
+    coreColor = '#fda4af'; // soft rose
+  } else if (norm <= 0.6) {
+    coreColor = '#94a3b8'; // soft slate
+  } else {
+    coreColor = '#93c5fd'; // soft sky blue
+  }
+
+  // Dark perimeter edge (blends into #08090d)
+  const darkColor = '#0b0e14';
+
+  return {
+    coreColor,
+    midColor,
+    darkColor,
+    glowColor: midColor,
+  };
+}
+
+export function getTemperatureColor(score: number): string {
+  return getNodeShading(score).midColor;
 }
 
 export function getTemperatureLabel(score: number): { label: string; textClass: string } {
@@ -62,11 +63,10 @@ export function getTemperatureLabel(score: number): { label: string; textClass: 
 
 export const DEFAULT_AREA_COLORS = [
   '#6366f1', // Indigo
-  '#0ea5e9', // Sky
   '#10b981', // Emerald
+  '#0ea5e9', // Sky
+  '#ec4899', // Pink
   '#f59e0b', // Amber
   '#8b5cf6', // Violet
-  '#ec4899', // Pink
   '#14b8a6', // Teal
-  '#f43f5e', // Rose
 ];
