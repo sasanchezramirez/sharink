@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, LifeArea, TemperatureScore } from '../types';
-import { getNodeShading, getTemperatureLabel } from '../utils/colors';
+import { getTemperatureColor, getTemperatureLabel } from '../utils/colors';
 import { X, Trash2, Save, Flame, Clock, Layers, Tag } from 'lucide-react';
 
 interface EditActivityModalProps {
@@ -74,7 +74,7 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
           <div className="flex items-center gap-2">
             <span
               className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: getNodeShading(temperature).midColor }}
+              style={{ backgroundColor: getTemperatureColor(temperature) }}
             />
             <h3 className="font-semibold text-xs uppercase tracking-wider text-gray-100">
               Editar Actividad

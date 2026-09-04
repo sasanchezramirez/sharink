@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { Activity, LifeArea, ViewportSettings, ActivityNode } from '../types';
-import { getNodeShading, getTemperatureLabel } from '../utils/colors';
+import { getTemperatureColor, getTemperatureLabel } from '../utils/colors';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 interface GraphCanvasProps {
@@ -36,7 +36,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     return map;
   }, [areas]);
 
-  // Filter activities based on visibility and active filters
+  // Filter activities
   const visibleActivities = useMemo(() => {
     return activities.filter((act) => {
       const hasVisibleArea = act.areaIds.some((id) => {
@@ -55,7 +55,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const nodesRef = useRef<ActivityNode[]>([]);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
-  // Layout & Simulation setup (Pure spatial clustering, no hulls, no node dragging)
+  // Setup D3 Simulation (Obsidian-inspired pure spatial dynamics)
   useEffect(() => {
     if (!svgRef.current || !containerRef.current) return;
 
@@ -67,7 +67,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const activeAreas = areas.filter((a) => a.visible);
     const areaCentroids = new Map<string, { x: number; y: number }>();
     const angleStep = (2 * Math.PI) / (activeAreas.length || 1);
-    const orbitRadius = Math.min(width, height) * 0.32;
+    const orbitRadius = Math.min(width, height) * 0.31;
 
     activeAreas.forEach((area, index) => {
       const angle = index * angleStep - Math.PI / 2;
@@ -82,10 +82,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
     const newNodes: ActivityNode[] = visibleActivities.map((act) => {
       const prev = prevNodesMap.get(act.id);
-      // Harmonious radius scale
-      const radius = Math.max(16, Math.min(48, 14 + Math.sqrt(Math.max(0.2, act.hours)) * 12));
+      // Sleek, balanced node radius (13px to 30px) - clean Obsidian style
+      const radius = Math.max(13, Math.min(30, 11 + Math.sqrt(Math.max(0.2, act.hours)) * 8.5));
+      const color = getTemperatureColor(act.temperature);
 
-      // Calculate target centroid for spatial attraction
       let targetX = centerX;
       let targetY = centerY;
       if (act.areaIds.length > 0) {
@@ -110,9 +110,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         id: act.id,
         activity: act,
         radius,
-        color: '', // handled via radial gradient
-        x: prev?.x ?? targetX + (Math.random() - 0.5) * 40,
-        y: prev?.y ?? targetY + (Math.random() - 0.5) * 40,
+        color,
+        x: prev?.x ?? targetX + (Math.random() - 0.5) * 30,
+        y: prev?.y ?? targetY + (Math.random() - 0.5) * 30,
         vx: prev?.vx ?? 0,
         vy: prev?.vy ?? 0,
       };
@@ -120,13 +120,12 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
     nodesRef.current = newNodes;
 
-    // Fast-converging simulation that settles naturally into fixed harmonic positions
     const simulation = d3
       .forceSimulation<ActivityNode>(newNodes)
-      .force('charge', d3.forceManyBody().strength(-120).distanceMax(380))
+      .force('charge', d3.forceManyBody().strength(-100).distanceMax(350))
       .force(
         'collision',
-        d3.forceCollide<ActivityNode>().radius((d) => d.radius + 12).iterations(3)
+        d3.forceCollide<ActivityNode>().radius((d) => d.radius + 8).iterations(3)
       )
       .force(
         'x',
@@ -142,7 +141,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             }
           });
           return count > 0 ? sum / count : centerX;
-        }).strength(0.18)
+        }).strength(0.20)
       )
       .force(
         'y',
@@ -158,17 +157,16 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             }
           });
           return count > 0 ? sum / count : centerY;
-        }).strength(0.18)
+        }).strength(0.20)
       )
-      .alphaDecay(0.04) // Converges quickly to stable equilibrium
-      .velocityDecay(0.45);
+      .alphaDecay(0.04)
+      .velocityDecay(0.48);
 
     simulationRef.current = simulation;
 
     const svg = d3.select(svgRef.current);
     const g = svg.select<SVGGElement>('#graph-container');
 
-    // Zoom & Pan on the background
     const zoomBehavior = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3.5])
@@ -179,7 +177,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     zoomBehaviorRef.current = zoomBehavior;
     svg.call(zoomBehavior);
 
-    // Render subtle area labels in the background at their centroid
+    // Render ethereal area watermarks at centroids
     const areaLabelsGroup = g.select<SVGGElement>('#area-labels-group');
     const areaLabelsData = activeAreas.map((area) => ({
       area,
@@ -195,16 +193,16 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     labelSelection
       .enter()
       .append('text')
-      .attr('class', 'area-watermark pointer-events-none font-mono text-[10px] tracking-widest uppercase')
+      .attr('class', 'area-watermark pointer-events-none font-sans text-[11px] font-semibold tracking-[0.2em] uppercase select-none')
       .attr('text-anchor', 'middle')
       .attr('fill', (d) => d.area.color)
-      .attr('fill-opacity', 0.18)
+      .attr('fill-opacity', 0.22)
       .merge(labelSelection)
       .attr('x', (d) => d.pos.x)
-      .attr('y', (d) => d.pos.y - 65)
+      .attr('y', (d) => d.pos.y - 50)
       .text((d) => d.area.name);
 
-    // Tick Handler
+    // Simulation Tick: Update positions
     simulation.on('tick', () => {
       const nodeSelection = g
         .select<SVGGElement>('#nodes-group')
@@ -213,107 +211,78 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
       nodeSelection.exit().remove();
 
-      // Enter new nodes (NO DRAGGING: purely contemplative and stable)
+      // Enter new nodes: PURE AESTHETIC DISCS (No 3D Encarta spheres, NO dotted lines)
       const enter = nodeSelection
         .enter()
         .append('g')
         .attr('class', 'activity-node cursor-pointer select-none');
 
-      // 1. OPTICAL BLOOM (True optical diffusion with radial fade + Gaussian blur)
+      // 1. Soft Ambient Halo (Only visible on hover via CSS/opacity)
       enter
         .append('circle')
-        .attr('class', 'node-bloom pointer-events-none transition-all duration-300')
-        .attr('filter', 'url(#optical-blur)')
+        .attr('class', 'node-glow pointer-events-none transition-all duration-300')
         .attr('opacity', 0);
 
-      // 2. MAIN SPHERICAL NODE with radial depth (No MS Paint bucket fill!)
+      // 2. Main Flat-Matte Aesthetic Disc
       enter
         .append('circle')
-        .attr('class', 'node-body transition-transform duration-200');
+        .attr('class', 'node-body transition-transform duration-200')
+        .attr('stroke', 'rgba(255, 255, 255, 0.22)')
+        .attr('stroke-width', 1);
 
-      // 3. ULTRA-THIN GLASS PERIMETER RING (0.5px)
-      enter
-        .append('circle')
-        .attr('class', 'node-glass-ring pointer-events-none')
-        .attr('fill', 'none')
-        .attr('stroke', 'rgba(255, 255, 255, 0.14)')
-        .attr('stroke-width', 0.5);
-
-      // 4. MULTI-AREA SUBTLE ACCENT PINPOINT (Only if multi-area)
-      enter
-        .append('circle')
-        .attr('class', 'node-multi-pin pointer-events-none')
-        .attr('fill', 'none')
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '2 3')
-        .attr('opacity', 0.4);
-
-      // 5. ACTIVITY NAME (Crisp micro-typography)
+      // 3. Crisp Activity Name Label
       enter
         .append('text')
-        .attr('class', 'node-label pointer-events-none font-sans font-medium text-center select-none fill-white')
+        .attr('class', 'node-label pointer-events-none font-sans text-center select-none fill-white')
         .attr('text-anchor', 'middle')
-        .attr('dy', '0.35em');
+        .attr('dy', '0.35em')
+        .style('font-weight', '500')
+        .style('text-shadow', '0 1px 3px rgba(0,0,0,0.8)');
 
-      // 6. HOURS MICRO-BADGE
+      // 4. Hours Subtitle (Only if node is large enough)
       enter
         .append('text')
-        .attr('class', 'node-hours pointer-events-none text-[9px] font-mono select-none fill-gray-400')
+        .attr('class', 'node-hours pointer-events-none text-[8.5px] font-mono select-none fill-gray-300')
         .attr('text-anchor', 'middle')
-        .attr('dy', '1.6em');
+        .attr('dy', '1.65em')
+        .style('text-shadow', '0 1px 3px rgba(0,0,0,0.8)');
 
       const allNodes = enter.merge(nodeSelection);
 
       allNodes.attr('transform', (d) => `translate(${d.x || 0}, ${d.y || 0})`);
 
-      // Set optical bloom
+      // Soft glow
       allNodes
-        .select('.node-bloom')
-        .attr('r', (d) => d.radius + 14)
-        .attr('fill', (d) => `url(#bloom-grad-${d.id})`);
+        .select('.node-glow')
+        .attr('r', (d) => d.radius + 10)
+        .attr('fill', (d) => d.color);
 
-      // Set multi-stop radial gradient fill
+      // Clean flat-matte body with subtle depth
       allNodes
         .select('.node-body')
         .attr('r', (d) => d.radius)
-        .attr('fill', (d) => `url(#sphere-grad-${d.id})`);
+        .attr('fill', (d) => d.color)
+        .attr('fill-opacity', 0.88);
 
-      // Glass ring
-      allNodes
-        .select('.node-glass-ring')
-        .attr('r', (d) => d.radius);
-
-      // Multi-area ring
-      allNodes
-        .select('.node-multi-pin')
-        .attr('r', (d) => d.radius + 2.5)
-        .attr('stroke', (d) => {
-          if (d.activity.areaIds.length > 1) {
-            const secondArea = areaMap.get(d.activity.areaIds[1]);
-            return secondArea ? secondArea.color : 'transparent';
-          }
-          return 'transparent';
-        });
-
-      // Label
+      // Label text
       allNodes
         .select('.node-label')
         .style('display', settings.showLabels ? 'block' : 'none')
-        .style('font-size', (d) => `${Math.max(9.5, Math.min(11.5, d.radius * 0.4))}px`)
+        .style('font-size', (d) => `${Math.max(8.5, Math.min(10.5, d.radius * 0.42))}px`)
         .text((d) => {
-          const maxChars = Math.floor(d.radius / 3.3);
+          const maxChars = Math.floor(d.radius / 3.0);
           return d.activity.name.length > maxChars
             ? d.activity.name.slice(0, maxChars) + '…'
             : d.activity.name;
         });
 
-      // Hours
+      // Hours text
       allNodes
         .select('.node-hours')
-        .style('display', settings.showLabels && settings.viewMode !== 'global' ? 'block' : 'none')
-        .text((d) => `${d.activity.hours}h`);
+        .style('display', settings.showLabels && settings.viewMode !== 'global' && settings.showLabels ? 'block' : 'none')
+        .text((d) => (d.radius >= 18 ? `${d.activity.hours}h` : ''));
 
-      // Hover and Click events (Gentle optical bloom activation)
+      // Clean Hover interactions
       allNodes
         .on('mouseenter', (event, d) => {
           const rect = containerRef.current?.getBoundingClientRect();
@@ -325,26 +294,21 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             });
           }
 
-          // Fade-in optical bloom smoothly
+          // Subtle, elegant optical bloom on hover
           d3.select(event.currentTarget)
-            .select('.node-bloom')
+            .select('.node-glow')
             .transition()
-            .duration(220)
-            .attr('opacity', 0.85);
+            .duration(180)
+            .attr('opacity', 0.35)
+            .attr('r', d.radius + 14);
 
-          // Subtle micro-expansion of the node body
           d3.select(event.currentTarget)
             .select('.node-body')
             .transition()
-            .duration(180)
-            .attr('r', d.radius * 1.08);
-
-          d3.select(event.currentTarget)
-            .select('.node-glass-ring')
-            .transition()
-            .duration(180)
-            .attr('r', d.radius * 1.08)
-            .attr('stroke', 'rgba(255, 255, 255, 0.4)');
+            .duration(150)
+            .attr('r', d.radius * 1.12)
+            .attr('fill-opacity', 1)
+            .attr('stroke', 'rgba(255, 255, 255, 0.6)');
         })
         .on('mousemove', (event) => {
           const rect = containerRef.current?.getBoundingClientRect();
@@ -357,25 +321,20 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         .on('mouseleave', (event, d) => {
           setHovered(null);
 
-          // Fade-out optical bloom
           d3.select(event.currentTarget)
-            .select('.node-bloom')
+            .select('.node-glow')
             .transition()
-            .duration(200)
-            .attr('opacity', 0);
+            .duration(180)
+            .attr('opacity', 0)
+            .attr('r', d.radius + 10);
 
           d3.select(event.currentTarget)
             .select('.node-body')
             .transition()
-            .duration(180)
-            .attr('r', d.radius);
-
-          d3.select(event.currentTarget)
-            .select('.node-glass-ring')
-            .transition()
-            .duration(180)
+            .duration(150)
             .attr('r', d.radius)
-            .attr('stroke', 'rgba(255, 255, 255, 0.14)');
+            .attr('fill-opacity', 0.88)
+            .attr('stroke', 'rgba(255, 255, 255, 0.22)');
         })
         .on('click', (_event, d) => {
           onSelectActivity(d.activity);
@@ -390,13 +349,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // Zoom actions
   const handleZoomIn = () => {
     if (svgRef.current && zoomBehaviorRef.current) {
-      d3.select(svgRef.current).transition().duration(250).call(zoomBehaviorRef.current.scaleBy, 1.3);
+      d3.select(svgRef.current).transition().duration(200).call(zoomBehaviorRef.current.scaleBy, 1.3);
     }
   };
 
   const handleZoomOut = () => {
     if (svgRef.current && zoomBehaviorRef.current) {
-      d3.select(svgRef.current).transition().duration(250).call(zoomBehaviorRef.current.scaleBy, 0.77);
+      d3.select(svgRef.current).transition().duration(200).call(zoomBehaviorRef.current.scaleBy, 0.77);
     }
   };
 
@@ -404,7 +363,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     if (svgRef.current && zoomBehaviorRef.current) {
       d3.select(svgRef.current)
         .transition()
-        .duration(350)
+        .duration(300)
         .call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
     }
   };
@@ -412,58 +371,33 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-[#08090d]"
+      className="relative w-full h-full overflow-hidden bg-[#07080c]"
     >
       <svg ref={svgRef} className="w-full h-full cursor-default">
         <defs>
-          {/* Real Optical Gaussian Blur Filter */}
-          <filter id="optical-blur" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="7" result="blur" />
-          </filter>
-
-          {/* Dynamic multi-stop radial gradients for each activity */}
-          {visibleActivities.map((act) => {
-            const shading = getNodeShading(act.temperature);
-            return (
-              <React.Fragment key={act.id}>
-                {/* 1. Deep Celestial Sphere Gradient */}
-                <radialGradient
-                  id={`sphere-grad-${act.id}`}
-                  cx="36%"
-                  cy="36%"
-                  r="64%"
-                >
-                  <stop offset="0%" stopColor={shading.coreColor} stopOpacity="0.95" />
-                  <stop offset="42%" stopColor={shading.midColor} stopOpacity="0.88" />
-                  <stop offset="100%" stopColor={shading.darkColor} stopOpacity="0.98" />
-                </radialGradient>
-
-                {/* 2. Optical Bloom Diffusion Gradient (Exponential decay) */}
-                <radialGradient
-                  id={`bloom-grad-${act.id}`}
-                  cx="50%"
-                  cy="50%"
-                  r="50%"
-                >
-                  <stop offset="0%" stopColor={shading.glowColor} stopOpacity="0.45" />
-                  <stop offset="45%" stopColor={shading.glowColor} stopOpacity="0.18" />
-                  <stop offset="100%" stopColor={shading.glowColor} stopOpacity="0" />
-                </radialGradient>
-              </React.Fragment>
-            );
-          })}
+          {/* Aesthetic Micro-Dot Matrix Pattern (Obsidian Canvas style) */}
+          <pattern
+            id="dot-grid"
+            width="28"
+            height="28"
+            patternUnits="userSpaceOnUse"
+          >
+            <circle cx="2" cy="2" r="0.9" fill="rgba(255, 255, 255, 0.055)" />
+          </pattern>
         </defs>
 
+        {/* Micro-dot spatial grid */}
+        <rect width="100%" height="100%" fill="url(#dot-grid)" pointerEvents="none" />
+
+        {/* Dynamic Graph Container */}
         <g id="graph-container">
-          {/* Subtle area watermarks */}
           <g id="area-labels-group" />
-          {/* Nodes */}
           <g id="nodes-group" />
         </g>
       </svg>
 
-      {/* Floating Canvas Controls (Ultra-minimal bottom-left) */}
-      <div className="absolute bottom-6 left-6 flex items-center gap-1 p-1 rounded-full bg-[#101218]/80 backdrop-blur-xl border border-white/5 shadow-xl z-20">
+      {/* Floating Canvas Quick Controls (Ultra-minimal bottom-left) */}
+      <div className="absolute bottom-6 left-6 flex items-center gap-1 p-1 rounded-full bg-[#10121a]/85 backdrop-blur-xl border border-white/5 shadow-xl z-20">
         <button
           onClick={handleZoomIn}
           title="Zoom In"
@@ -487,13 +421,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </button>
       </div>
 
-      {/* Subtle Hover Inspection Card */}
+      {/* Hover Inspection Card (Ultra-sleek, clean typography) */}
       {hovered && (
         <div
           className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-[120%] transition-transform duration-75"
           style={{ left: hovered.x, top: hovered.y }}
         >
-          <div className="p-3 rounded-xl bg-[#101218]/95 backdrop-blur-2xl border border-white/10 shadow-2xl text-xs space-y-2 min-w-[190px] text-gray-100">
+          <div className="p-3 rounded-xl bg-[#0f1118]/95 backdrop-blur-2xl border border-white/10 shadow-2xl text-xs space-y-2 min-w-[190px] text-gray-100">
             <div className="flex items-center justify-between gap-3">
               <span className="font-semibold text-xs tracking-tight text-white">
                 {hovered.activity.name}
@@ -524,7 +458,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               <div className="flex items-center gap-1.5">
                 <span
                   className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: getNodeShading(hovered.activity.temperature).midColor }}
+                  style={{ backgroundColor: getTemperatureColor(hovered.activity.temperature) }}
                 />
                 <span className={`font-medium ${getTemperatureLabel(hovered.activity.temperature).textClass}`}>
                   {hovered.activity.temperature > 0 ? `+${hovered.activity.temperature}` : hovered.activity.temperature}
