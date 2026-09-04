@@ -64,7 +64,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         <span className="font-semibold text-xs tracking-wider uppercase text-gray-100">
           sharink
         </span>
-        <span className="w-1 h-1 rounded-full bg-indigo-500/80" />
+        <span className="w-1 h-1 rounded-full bg-sky-500/80" />
         <span className="text-[10px] text-gray-500 font-mono">espacio vital</span>
       </div>
 
@@ -133,7 +133,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             <div className="w-12 h-1 rounded-full bg-white/10 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${
-                  isDayOverLimit ? 'bg-amber-500' : 'bg-indigo-500'
+                  isDayOverLimit ? 'bg-amber-500' : 'bg-sky-500'
                 }`}
                 style={{ width: `${dayProgressPercent}%` }}
               />

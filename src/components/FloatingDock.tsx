@@ -228,19 +228,19 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                   step="0.5"
                   value={actTemperature}
                   onChange={(e) => setActTemperature(parseFloat(e.target.value))}
-                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-rose-500 via-slate-500 to-indigo-500"
+                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-red-500 via-yellow-400 via-emerald-500 to-sky-500"
                 />
-                <div className="flex justify-between text-[10px] mt-1 text-gray-500">
-                  <span>-5 Rojo (Drenante)</span>
-                  <span>0 Neutro</span>
-                  <span>+5 Azul (Flujo)</span>
+                <div className="flex justify-between text-[10px] mt-1 text-gray-400">
+                  <span className="text-red-400">-5 Rojo</span>
+                  <span className="text-yellow-400">0 Amarillo</span>
+                  <span className="text-sky-400">+5 Azul</span>
                 </div>
               </div>
 
               {/* Submit */}
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-xl font-medium text-xs flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-98"
+                className="w-full py-2.5 rounded-xl font-medium text-xs flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20 transition-all active:scale-98"
               >
                 <Sparkles size={14} />
                 <span>Agregar al Espacio</span>

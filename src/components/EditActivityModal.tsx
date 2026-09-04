@@ -100,7 +100,7 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-3 py-2 rounded-xl text-xs bg-[#08090d] border border-white/10 text-white outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 rounded-xl text-xs bg-[#08090d] border border-white/10 text-white outline-none focus:border-sky-500"
             />
           </div>
 
@@ -111,7 +111,7 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
                 <Clock size={12} />
                 Horas Dedicadas
               </span>
-              <span className="font-mono font-bold text-indigo-400">{hours}h</span>
+              <span className="font-mono font-bold text-sky-400">{hours}h</span>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -121,7 +121,7 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
                 step="0.25"
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
-                className="w-full h-1.5 rounded-lg cursor-pointer accent-indigo-500 bg-[#08090d]"
+                className="w-full h-1.5 rounded-lg cursor-pointer accent-sky-500 bg-[#08090d]"
               />
               <input
                 type="number"
@@ -151,7 +151,7 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
                     onClick={() => toggleArea(area.id)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all ${
                       isSelected
-                        ? 'bg-[#181b24] border-indigo-500/80 text-white font-medium shadow-sm'
+                        ? 'bg-[#181b24] border-sky-500/80 text-white font-medium shadow-sm'
                         : 'bg-[#08090d]/60 border-white/5 text-gray-400'
                     }`}
                   >
@@ -181,8 +181,13 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
               step="0.5"
               value={temperature}
               onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-rose-500 via-slate-500 to-indigo-500"
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-red-500 via-yellow-400 via-emerald-500 to-sky-500"
             />
+            <div className="flex justify-between text-[10px] mt-1 text-gray-400">
+              <span className="text-red-400">-5 Rojo</span>
+              <span className="text-yellow-400">0 Amarillo</span>
+              <span className="text-sky-400">+5 Azul</span>
+            </div>
           </div>
 
           {/* Notes */}
@@ -194,7 +199,7 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full px-3 py-1.5 rounded-xl text-xs bg-[#08090d] border border-white/10 text-white outline-none focus:border-indigo-500"
+              className="w-full px-3 py-1.5 rounded-xl text-xs bg-[#08090d] border border-white/10 text-white outline-none focus:border-sky-500"
             />
           </div>
 
@@ -219,7 +224,7 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white shadow-md"
+                className="px-4 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white shadow-md"
               >
                 <Save size={13} />
                 <span>Guardar</span>
