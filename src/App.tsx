@@ -7,16 +7,20 @@ import {
   saveAreas,
   getTodayDateString,
 } from './utils/storage';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { GraphCanvas } from './components/GraphCanvas';
 import { TopBar } from './components/TopBar';
-import { Toolbar } from './components/Toolbar';
+import { FloatingDock } from './components/FloatingDock';
 import { EditActivityModal } from './components/EditActivityModal';
 
-export const App: React.FC = () => {
+const SharinkMain: React.FC = () => {
+  const { themeConfig } = useTheme();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [areas, setAreas] = useState<LifeArea[]>([]);
-  const [isToolbarOpen, setIsToolbarOpen] = useState(true);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [activePopover, setActivePopover] = useState<
+    'activity' | 'areas' | 'filters' | 'themes' | null
+  >(null);
 
   // Viewport Settings
   const [settings, setSettings] = useState<ViewportSettings>({
@@ -27,19 +31,17 @@ export const App: React.FC = () => {
     activeAreaFilters: [],
   });
 
-  // Load from local storage on mount
+  // Load from local storage
   useEffect(() => {
     setActivities(loadActivities());
     setAreas(loadAreas());
   }, []);
 
-  // Persist activities whenever changed
   const handleUpdateActivities = (newActivities: Activity[]) => {
     setActivities(newActivities);
     saveActivities(newActivities);
   };
 
-  // Persist areas whenever changed
   const handleUpdateAreas = (newAreas: LifeArea[]) => {
     setAreas(newAreas);
     saveAreas(newAreas);
@@ -56,7 +58,6 @@ export const App: React.FC = () => {
     }
 
     if (settings.viewMode === 'week') {
-      // 7-day window surrounding or ending at selected date
       const targetTime = new Date(settings.selectedDate).getTime();
       const oneDayMs = 24 * 60 * 60 * 1000;
       return activities.filter((act) => {
@@ -67,19 +68,17 @@ export const App: React.FC = () => {
     }
 
     if (settings.viewMode === 'month') {
-      const targetMonth = settings.selectedDate.slice(0, 7); // YYYY-MM
+      const targetMonth = settings.selectedDate.slice(0, 7);
       return activities.filter((act) => act.date.startsWith(targetMonth));
     }
 
     return activities;
   }, [activities, settings.viewMode, settings.selectedDate]);
 
-  // Total hours in current view
   const totalHours = useMemo(() => {
     return currentFilteredActivities.reduce((sum, act) => sum + act.hours, 0);
   }, [currentFilteredActivities]);
 
-  // Create Activity handler
   const handleAddActivity = (newActData: Omit<Activity, 'id' | 'createdAt'>) => {
     const newAct: Activity = {
       ...newActData,
@@ -89,19 +88,16 @@ export const App: React.FC = () => {
     handleUpdateActivities([newAct, ...activities]);
   };
 
-  // Update Activity handler
   const handleSaveActivity = (updated: Activity) => {
     handleUpdateActivities(
       activities.map((act) => (act.id === updated.id ? updated : act))
     );
   };
 
-  // Delete Activity handler
   const handleDeleteActivity = (id: string) => {
     handleUpdateActivities(activities.filter((act) => act.id !== id));
   };
 
-  // Add Area handler
   const handleAddArea = (name: string, color: string) => {
     const newArea: LifeArea = {
       id: `area-${Date.now()}`,
@@ -112,58 +108,55 @@ export const App: React.FC = () => {
     handleUpdateAreas([...areas, newArea]);
   };
 
-  // Toggle Area Visibility
   const handleToggleAreaVisibility = (areaId: string) => {
     handleUpdateAreas(
       areas.map((a) => (a.id === areaId ? { ...a, visible: !a.visible } : a))
     );
   };
 
-  // Update Settings
   const handleUpdateSettings = (partial: Partial<ViewportSettings>) => {
     setSettings((prev) => ({ ...prev, ...partial }));
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0b0d13]">
-      {/* Top Header Bar */}
+    <div
+      className={`flex flex-col h-screen w-screen overflow-hidden ${themeConfig.fontFamily}`}
+      style={{ backgroundColor: themeConfig.bgCanvas, color: themeConfig.textPrimary }}
+    >
+      {/* Top Header */}
       <TopBar
         viewMode={settings.viewMode}
         onViewModeChange={(mode: ViewMode) => handleUpdateSettings({ viewMode: mode })}
         selectedDate={settings.selectedDate}
         onDateChange={(date: string) => handleUpdateSettings({ selectedDate: date })}
         totalHours={totalHours}
-        onToggleToolbar={() => setIsToolbarOpen((prev) => !prev)}
-        isToolbarOpen={isToolbarOpen}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Dynamic Graph Canvas */}
-        <main className="flex-1 h-full relative">
-          <GraphCanvas
-            activities={currentFilteredActivities}
-            areas={areas}
-            settings={settings}
-            onSelectActivity={(act) => setSelectedActivity(act)}
-            onUpdateAreaVisibility={handleToggleAreaVisibility}
-          />
-        </main>
-
-        {/* Lateral Toolbar / Simulator (CA6, CA7) */}
-        <Toolbar
+      {/* Main Fullscreen Canvas */}
+      <main className="flex-1 w-full h-[calc(100vh-2.75rem)] relative overflow-hidden">
+        <GraphCanvas
+          activities={currentFilteredActivities}
           areas={areas}
           settings={settings}
-          isOpen={isToolbarOpen}
-          onClose={() => setIsToolbarOpen(false)}
+          onSelectActivity={(act) => setSelectedActivity(act)}
+          onToggleAreaVisibility={handleToggleAreaVisibility}
+          onOpenNewActivity={() => setActivePopover('activity')}
+        />
+
+        {/* Minimalist Floating Island Dock */}
+        <FloatingDock
+          areas={areas}
+          settings={settings}
           onAddActivity={handleAddActivity}
           onAddArea={handleAddArea}
           onToggleAreaVisibility={handleToggleAreaVisibility}
           onUpdateSettings={handleUpdateSettings}
+          activePopover={activePopover}
+          setActivePopover={setActivePopover}
         />
-      </div>
+      </main>
 
-      {/* Edit / Inspect Modal (A6) */}
+      {/* Edit Activity Modal */}
       <EditActivityModal
         activity={selectedActivity}
         areas={areas}
@@ -173,5 +166,13 @@ export const App: React.FC = () => {
         onDeleteActivity={handleDeleteActivity}
       />
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <ThemeProvider>
+      <SharinkMain />
+    </ThemeProvider>
   );
 };

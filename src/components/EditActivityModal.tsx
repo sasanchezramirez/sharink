@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, LifeArea, TemperatureScore } from '../types';
 import { getTemperatureColor, getTemperatureLabel } from '../utils/colors';
+import { useTheme } from '../context/ThemeContext';
 import { X, Trash2, Save, Flame, Clock, Layers, Tag } from 'lucide-react';
 
 interface EditActivityModalProps {
@@ -20,6 +21,7 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
   onUpdateActivity,
   onDeleteActivity,
 }) => {
+  const { theme, themeConfig } = useTheme();
   const [name, setName] = useState('');
   const [hours, setHours] = useState('2.0');
   const [areaIds, setAreaIds] = useState<string[]>([]);
@@ -67,30 +69,40 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-md rounded-2xl bg-gray-950 border border-gray-800 shadow-2xl p-6 text-gray-100 space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+      <div
+        className="w-full max-w-md rounded-2xl border shadow-2xl p-5 space-y-4"
+        style={{
+          backgroundColor: `${themeConfig.bgSurface}f8`,
+          borderColor: themeConfig.borderStrong,
+          color: themeConfig.textPrimary,
+        }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-gray-800">
+        <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: themeConfig.borderSubtle }}>
           <div className="flex items-center gap-2">
             <span
-              className="w-3.5 h-3.5 rounded-full shadow-md"
-              style={{ backgroundColor: getTemperatureColor(temperature) }}
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: getTemperatureColor(temperature, theme) }}
             />
-            <h3 className="font-bold text-base text-white">Editar Actividad</h3>
+            <h3 className="font-semibold text-xs uppercase tracking-wider">
+              Editar Actividad
+            </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800"
+            className="p-1 rounded-lg hover:opacity-75 transition-opacity"
+            style={{ color: themeConfig.textMuted }}
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1.5">
-              <Tag size={13} className="text-cyan-400" />
+            <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: themeConfig.textSecondary }}>
+              <Tag size={12} />
               Nombre
             </label>
             <input
@@ -98,19 +110,26 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-800 text-sm text-white focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 rounded-xl text-xs outline-none border"
+              style={{
+                backgroundColor: themeConfig.bgCanvas,
+                borderColor: themeConfig.borderSubtle,
+                color: themeConfig.textPrimary,
+              }}
             />
           </div>
 
           {/* Hours */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Clock size={13} className="text-indigo-400" />
+            <div className="flex items-center justify-between mb-1.5 text-[11px]" style={{ color: themeConfig.textSecondary }}>
+              <span className="flex items-center gap-1.5 font-medium uppercase tracking-wider">
+                <Clock size={12} />
                 Horas Dedicadas
               </span>
-              <span className="font-mono text-xs text-indigo-300 font-bold">{hours}h</span>
-            </label>
+              <span className="font-mono font-bold" style={{ color: themeConfig.accent }}>
+                {hours}h
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="range"
@@ -119,7 +138,8 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
                 step="0.25"
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
-                className="w-full accent-indigo-500 cursor-pointer h-2 bg-gray-800 rounded-lg"
+                className="w-full h-1.5 rounded-lg cursor-pointer accent-current"
+                style={{ color: themeConfig.accent, backgroundColor: themeConfig.bgCanvas }}
               />
               <input
                 type="number"
@@ -128,18 +148,23 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
                 step="0.5"
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
-                className="w-16 px-2 py-1 rounded-lg bg-gray-900 border border-gray-700 text-xs font-mono text-center text-white"
+                className="w-14 px-1.5 py-1 rounded-lg text-xs font-mono text-center border"
+                style={{
+                  backgroundColor: themeConfig.bgCanvas,
+                  borderColor: themeConfig.borderSubtle,
+                  color: themeConfig.textPrimary,
+                }}
               />
             </div>
           </div>
 
           {/* Areas */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1.5">
-              <Layers size={13} className="text-purple-400" />
-              Aspectos de Vida (Multiselección)
+            <label className="block text-[11px] font-medium uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: themeConfig.textSecondary }}>
+              <Layers size={12} />
+              Aspectos de Vida
             </label>
-            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
               {areas.map((area) => {
                 const isSelected = areaIds.includes(area.id);
                 return (
@@ -148,15 +173,15 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
                     key={area.id}
                     onClick={() => toggleArea(area.id)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all ${
-                      isSelected
-                        ? 'bg-indigo-900/60 border-indigo-500 text-white font-medium'
-                        : 'bg-gray-900 border-gray-800 text-gray-400'
+                      isSelected ? 'font-medium shadow-sm' : 'opacity-60 hover:opacity-100'
                     }`}
+                    style={{
+                      backgroundColor: isSelected ? themeConfig.bgElevated : 'transparent',
+                      borderColor: isSelected ? area.color : themeConfig.borderSubtle,
+                      color: isSelected ? themeConfig.textPrimary : themeConfig.textSecondary,
+                    }}
                   >
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: area.color }}
-                    />
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: area.color }} />
                     <span>{area.name}</span>
                   </button>
                 );
@@ -166,12 +191,12 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
 
           {/* Temperature */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                <Flame size={13} className="text-rose-400" />
+            <div className="flex items-center justify-between mb-1.5 text-[11px]">
+              <span className="font-medium uppercase tracking-wider flex items-center gap-1.5" style={{ color: themeConfig.textSecondary }}>
+                <Flame size={12} />
                 Temperatura Vital
-              </label>
-              <span className={`text-xs font-bold ${getTemperatureLabel(temperature).textClass}`}>
+              </span>
+              <span className={`font-semibold ${getTemperatureLabel(temperature).textClass}`}>
                 {temperature > 0 ? `+${temperature.toFixed(1)}` : temperature.toFixed(1)}
               </span>
             </div>
@@ -182,31 +207,36 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
               step="0.5"
               value={temperature}
               onChange={(e) => setTemperature(parseFloat(e.target.value))}
-              className="w-full accent-white cursor-pointer h-2.5 rounded-lg appearance-none bg-gradient-to-r from-red-500 via-emerald-400 to-blue-500 shadow-inner"
+              className="w-full h-2 rounded-full appearance-none cursor-pointer bg-gradient-to-r from-rose-500 via-slate-400 to-indigo-500"
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
-              Notas
+            <label className="block text-[11px] font-medium uppercase tracking-wider mb-1" style={{ color: themeConfig.textSecondary }}>
+              Notas / Reflexiones
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 rounded-xl bg-gray-900 border border-gray-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-1.5 rounded-xl text-xs outline-none border"
+              style={{
+                backgroundColor: themeConfig.bgCanvas,
+                borderColor: themeConfig.borderSubtle,
+                color: themeConfig.textPrimary,
+              }}
             />
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center justify-between pt-2 border-t border-gray-800">
+          {/* Buttons */}
+          <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: themeConfig.borderSubtle }}>
             <button
               type="button"
               onClick={handleDelete}
-              className="px-3 py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-xl text-rose-400 hover:bg-rose-500/10 text-xs font-medium flex items-center gap-1.5 transition-colors"
             >
-              <Trash2 size={14} />
+              <Trash2 size={13} />
               <span>Eliminar</span>
             </button>
 
@@ -214,16 +244,21 @@ export const EditActivityModal: React.FC<EditActivityModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-300 text-xs font-medium"
+                className="px-3 py-1.5 rounded-xl text-xs font-medium hover:opacity-75"
+                style={{ color: themeConfig.textMuted }}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-md"
+                style={{
+                  backgroundColor: themeConfig.accent,
+                  color: theme === 'hacker' ? '#000' : '#fff',
+                }}
               >
-                <Save size={14} />
-                <span>Guardar Cambios</span>
+                <Save size={13} />
+                <span>Guardar</span>
               </button>
             </div>
           </div>

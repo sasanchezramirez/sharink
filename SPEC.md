@@ -19,7 +19,7 @@ El objetivo es transformar el registro del tiempo en una experiencia visual, esp
 ---
 
 ## 2. Historia de Usuario y Criterios de Aceptación
-
+:qué
 ### Historia de Usuario
 > **Como** usuario de la aplicación Sharink,  
 > **necesito** visualizar en forma de distribución espacial nodos que correspondan a las actividades que realizo diariamente en mi vida,  

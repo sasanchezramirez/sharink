@@ -1,61 +1,72 @@
 import { interpolateRgb } from 'd3';
+import { ThemeMode } from '../context/ThemeContext';
 
 /**
  * Electromagnetic-inspired Temperature Scale:
- * -5 (Negative): Intense Red / Infrared
- * -2.5: Orange
- *  0 (Neutral): Green / Lime
- * +2.5: Cyan
- * +5 (Positive): Deep Blue / Violet
+ * Refined, non-garish palette:
+ * -5 (Negative / Draining): Muted Crimson (#e11d48)
+ * -2.5 (Demanding): Warm Ochre (#d97706)
+ *  0 (Neutral / Equilibrium): Sage / Slate (#64748b)
+ * +2.5 (Engaging): Soft Teal (#14b8a6)
+ * +5 (Positive / Flow): Deep Azure (#2563eb) to Cosmic Indigo (#4f46e5)
  */
-export function getTemperatureColor(score: number): string {
-  // Clamp score between -5 and +5
+export function getTemperatureColor(score: number, theme: ThemeMode = 'linear'): string {
   const clamped = Math.max(-5, Math.min(5, score));
-  
-  // Normalized to [0, 1]
-  // 0 -> Red (-5)
-  // 0.25 -> Orange (-2.5)
-  // 0.5 -> Green/Lime (0)
-  // 0.75 -> Cyan (+2.5)
-  // 1.0 -> Blue/Violet (+5)
-  const norm = (clamped + 5) / 10;
+  const norm = (clamped + 5) / 10; // 0 to 1
 
+  if (theme === 'hacker') {
+    // Hacker theme EM spectrum: Amber/Phosphor Red (-5) to Lime/Green/Cyan (+5)
+    if (norm <= 0.5) {
+      const t = norm / 0.5;
+      return interpolateRgb('#ef4444', '#f59e0b')(t);
+    } else {
+      const t = (norm - 0.5) / 0.5;
+      return interpolateRgb('#f59e0b', '#22c55e')(t);
+    }
+  }
+
+  if (theme === 'editorial') {
+    // Monochromatic / Architectural high-contrast precision
+    if (norm <= 0.5) {
+      const t = norm / 0.5;
+      return interpolateRgb('#71717a', '#a1a1aa')(t);
+    } else {
+      const t = (norm - 0.5) / 0.5;
+      return interpolateRgb('#a1a1aa', '#f4f4f5')(t);
+    }
+  }
+
+  // Linear & Zen default palette
   if (norm <= 0.25) {
     const t = norm / 0.25;
-    return interpolateRgb('#ef4444', '#f97316')(t);
+    return interpolateRgb('#e11d48', '#ea580c')(t);
   } else if (norm <= 0.5) {
     const t = (norm - 0.25) / 0.25;
-    return interpolateRgb('#f97316', '#10b981')(t);
+    return interpolateRgb('#ea580c', '#64748b')(t);
   } else if (norm <= 0.75) {
     const t = (norm - 0.5) / 0.25;
-    return interpolateRgb('#10b981', '#06b6d4')(t);
+    return interpolateRgb('#64748b', '#0ea5e9')(t);
   } else {
     const t = (norm - 0.75) / 0.25;
-    return interpolateRgb('#06b6d4', '#3b82f6')(t);
+    return interpolateRgb('#0ea5e9', '#6366f1')(t);
   }
 }
 
-/**
- * Get human-readable description for temperature score
- */
 export function getTemperatureLabel(score: number): { label: string; textClass: string } {
-  if (score >= 3.5) return { label: 'Muy Positivo (Foco/Flujo)', textClass: 'text-blue-400' };
-  if (score >= 1.5) return { label: 'Positivo', textClass: 'text-cyan-400' };
-  if (score >= -1.4) return { label: 'Neutro / Necesario', textClass: 'text-emerald-400' };
-  if (score >= -3.4) return { label: 'Desgastante / Negativo', textClass: 'text-amber-500' };
-  return { label: 'Muy Tóxico / Drenante', textClass: 'text-rose-500' };
+  if (score >= 3.5) return { label: 'Flujo / Trascendente (+5)', textClass: 'text-indigo-400' };
+  if (score >= 1.5) return { label: 'Energizante (+2)', textClass: 'text-sky-400' };
+  if (score >= -1.4) return { label: 'Neutro / Funcional (0)', textClass: 'text-slate-400' };
+  if (score >= -3.4) return { label: 'Fricción / Desgaste (-2)', textClass: 'text-amber-400' };
+  return { label: 'Drenante / Tóxico (-5)', textClass: 'text-rose-400' };
 }
 
-/**
- * Predefined palette for life areas
- */
 export const DEFAULT_AREA_COLORS = [
-  '#38bdf8', // Sky Blue
-  '#a855f7', // Purple
-  '#ec4899', // Pink
+  '#6366f1', // Indigo
+  '#0ea5e9', // Sky
   '#10b981', // Emerald
   '#f59e0b', // Amber
-  '#6366f1', // Indigo
+  '#8b5cf6', // Violet
+  '#ec4899', // Pink
   '#14b8a6', // Teal
   '#f43f5e', // Rose
 ];
