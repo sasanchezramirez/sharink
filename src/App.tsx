@@ -12,6 +12,62 @@ import { TopBar } from './components/TopBar';
 import { FloatingDock } from './components/FloatingDock';
 import { EditActivityModal } from './components/EditActivityModal';
 
+/**
+ * Consolidate activities by name (summing hours, weighted temperature, union of areas)
+ */
+function aggregateActivities(rawActivities: Activity[]): Activity[] {
+  const map = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      totalHours: number;
+      weightedTempSum: number;
+      areaIdSet: Set<string>;
+      dates: string[];
+      notesList: string[];
+      createdAt: number;
+    }
+  >();
+
+  rawActivities.forEach((act) => {
+    const key = act.name.trim().toLowerCase();
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, {
+        id: `agg-${key}`,
+        name: act.name.trim(),
+        totalHours: act.hours,
+        weightedTempSum: act.temperature * act.hours,
+        areaIdSet: new Set(act.areaIds),
+        dates: [act.date],
+        notesList: act.notes ? [`${act.date}: ${act.notes}`] : [],
+        createdAt: act.createdAt,
+      });
+    } else {
+      existing.totalHours += act.hours;
+      existing.weightedTempSum += act.temperature * act.hours;
+      act.areaIds.forEach((aid) => existing.areaIdSet.add(aid));
+      if (!existing.dates.includes(act.date)) existing.dates.push(act.date);
+      if (act.notes) existing.notesList.push(`${act.date}: ${act.notes}`);
+    }
+  });
+
+  return Array.from(map.values()).map((item) => ({
+    id: item.id,
+    name: item.name,
+    hours: Math.round(item.totalHours * 10) / 10,
+    areaIds: Array.from(item.areaIdSet),
+    temperature:
+      item.totalHours > 0
+        ? Math.round((item.weightedTempSum / item.totalHours) * 10) / 10
+        : 0,
+    date: item.dates.join(', '),
+    notes: item.notesList.length > 0 ? item.notesList.join(' • ') : undefined,
+    createdAt: item.createdAt,
+  }));
+}
+
 export const App: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [areas, setAreas] = useState<LifeArea[]>([]);
@@ -23,7 +79,7 @@ export const App: React.FC = () => {
     viewMode: 'day',
     selectedDate: getTodayDateString(),
     showLabels: true,
-    showAreaHulls: false, // Hulls removed in V2
+    showAreaHulls: false,
     activeAreaFilters: [],
   });
 
@@ -43,29 +99,38 @@ export const App: React.FC = () => {
     saveAreas(newAreas);
   };
 
-  // Filter activities based on ViewMode & Date
+  // Filter and Aggregate activities based on ViewMode & Date
   const currentFilteredActivities = useMemo(() => {
     if (settings.viewMode === 'global') {
-      return activities;
+      // Aggregate all activities across all history
+      return aggregateActivities(activities);
     }
 
     if (settings.viewMode === 'day') {
-      return activities.filter((act) => act.date === settings.selectedDate);
+      // Intra-day: show entries for this specific date
+      const dayActivities = activities.filter((act) => act.date === settings.selectedDate);
+      // Also consolidate within the day if same activity was logged multiple times today
+      return aggregateActivities(dayActivities);
     }
 
     if (settings.viewMode === 'week') {
+      // 7-day window surrounding selected date
       const targetTime = new Date(settings.selectedDate).getTime();
       const oneDayMs = 24 * 60 * 60 * 1000;
-      return activities.filter((act) => {
+      const weekRawActivities = activities.filter((act) => {
         const actTime = new Date(act.date).getTime();
         const diffDays = (actTime - targetTime) / oneDayMs;
         return diffDays >= -3 && diffDays <= 3;
       });
+      // Consolidate across the week into single cumulative nodes!
+      return aggregateActivities(weekRawActivities);
     }
 
     if (settings.viewMode === 'month') {
       const targetMonth = settings.selectedDate.slice(0, 7);
-      return activities.filter((act) => act.date.startsWith(targetMonth));
+      const monthRawActivities = activities.filter((act) => act.date.startsWith(targetMonth));
+      // Consolidate across the month into single cumulative nodes!
+      return aggregateActivities(monthRawActivities);
     }
 
     return activities;
@@ -75,23 +140,94 @@ export const App: React.FC = () => {
     return currentFilteredActivities.reduce((sum, act) => sum + act.hours, 0);
   }, [currentFilteredActivities]);
 
+  /**
+   * Add Activity Handler:
+   * If an activity with the same name already exists on that date,
+   * it sums the hours to the existing node instead of duplicating!
+   */
   const handleAddActivity = (newActData: Omit<Activity, 'id' | 'createdAt'>) => {
-    const newAct: Activity = {
-      ...newActData,
-      id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      createdAt: Date.now(),
-    };
-    handleUpdateActivities([newAct, ...activities]);
+    const normName = newActData.name.trim().toLowerCase();
+    const targetDate = newActData.date;
+
+    const existingIndex = activities.findIndex(
+      (a) => a.date === targetDate && a.name.trim().toLowerCase() === normName
+    );
+
+    if (existingIndex !== -1) {
+      // Sum to existing activity on this day
+      const existing = activities[existingIndex];
+      const combinedHours = Math.round((existing.hours + newActData.hours) * 10) / 10;
+      const weightedTemp =
+        combinedHours > 0
+          ? Math.round(
+              (((existing.temperature * existing.hours) +
+                (newActData.temperature * newActData.hours)) /
+                combinedHours) *
+                10
+            ) / 10
+          : newActData.temperature;
+
+      const mergedAreas = Array.from(new Set([...existing.areaIds, ...newActData.areaIds]));
+      const mergedNotes = [existing.notes, newActData.notes].filter(Boolean).join(' | ');
+
+      const updatedActivity: Activity = {
+        ...existing,
+        hours: combinedHours,
+        temperature: weightedTemp,
+        areaIds: mergedAreas,
+        notes: mergedNotes || undefined,
+      };
+
+      const updatedList = [...activities];
+      updatedList[existingIndex] = updatedActivity;
+      handleUpdateActivities(updatedList);
+    } else {
+      // Create new activity entry for this day
+      const newAct: Activity = {
+        ...newActData,
+        id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        createdAt: Date.now(),
+      };
+      handleUpdateActivities([newAct, ...activities]);
+    }
   };
 
   const handleSaveActivity = (updated: Activity) => {
-    handleUpdateActivities(
-      activities.map((act) => (act.id === updated.id ? updated : act))
-    );
+    // If it's a consolidated activity (starts with 'agg-'), update matching activities by name
+    if (updated.id.startsWith('agg-')) {
+      const normName = updated.name.trim().toLowerCase();
+      handleUpdateActivities(
+        activities.map((act) => {
+          if (act.name.trim().toLowerCase() === normName) {
+            return {
+              ...act,
+              name: updated.name,
+              areaIds: updated.areaIds,
+              temperature: updated.temperature,
+            };
+          }
+          return act;
+        })
+      );
+    } else {
+      handleUpdateActivities(
+        activities.map((act) => (act.id === updated.id ? updated : act))
+      );
+    }
   };
 
   const handleDeleteActivity = (id: string) => {
-    handleUpdateActivities(activities.filter((act) => act.id !== id));
+    if (id.startsWith('agg-')) {
+      const selected = currentFilteredActivities.find((a) => a.id === id);
+      if (selected) {
+        const normName = selected.name.trim().toLowerCase();
+        handleUpdateActivities(
+          activities.filter((act) => act.name.trim().toLowerCase() !== normName)
+        );
+      }
+    } else {
+      handleUpdateActivities(activities.filter((act) => act.id !== id));
+    }
   };
 
   const handleAddArea = (name: string, color: string) => {
@@ -115,7 +251,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#08090d] text-gray-200 font-sans">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0c0d13] text-gray-200 font-sans">
       {/* Top Header */}
       <TopBar
         viewMode={settings.viewMode}
@@ -138,6 +274,7 @@ export const App: React.FC = () => {
 
         {/* Minimalist Floating Island Dock */}
         <FloatingDock
+          activities={activities}
           areas={areas}
           settings={settings}
           onAddActivity={handleAddActivity}

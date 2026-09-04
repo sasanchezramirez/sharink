@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Activity, LifeArea, ViewportSettings, TemperatureScore } from '../types';
 import { getTemperatureLabel, DEFAULT_AREA_COLORS } from '../utils/colors';
 import {
@@ -13,9 +13,11 @@ import {
   Flame,
   X,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 
 interface FloatingDockProps {
+  activities: Activity[];
   areas: LifeArea[];
   settings: ViewportSettings;
   onAddActivity: (activity: Omit<Activity, 'id' | 'createdAt'>) => void;
@@ -27,6 +29,7 @@ interface FloatingDockProps {
 }
 
 export const FloatingDock: React.FC<FloatingDockProps> = ({
+  activities,
   areas,
   settings,
   onAddActivity,
@@ -38,7 +41,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
 }) => {
   // Activity form state
   const [actName, setActName] = useState('');
-  const [actHours, setActHours] = useState('2.0');
+  const [actHours, setActHours] = useState('1.0');
   const [actAreaIds, setActAreaIds] = useState<string[]>(areas.length > 0 ? [areas[0].id] : []);
   const [actTemperature, setActTemperature] = useState<TemperatureScore>(3.0);
   const [actNotes, setActNotes] = useState('');
@@ -46,6 +49,35 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
   // Area form state
   const [newAreaName, setNewAreaName] = useState('');
   const [newAreaColor, setNewAreaColor] = useState(DEFAULT_AREA_COLORS[0]);
+
+  // Unique list of previous activity names for autocomplete suggestions
+  const previousActivityNames = useMemo(() => {
+    const names = new Set<string>();
+    activities.forEach((a) => {
+      if (a.name) names.add(a.name.trim());
+    });
+    return Array.from(names);
+  }, [activities]);
+
+  // Check if an activity with this name already exists on the selected date
+  const existingTodayActivity = useMemo(() => {
+    if (!actName.trim()) return null;
+    const norm = actName.trim().toLowerCase();
+    return activities.find(
+      (a) => a.date === settings.selectedDate && a.name.trim().toLowerCase() === norm
+    );
+  }, [activities, actName, settings.selectedDate]);
+
+  // When user types or selects a known activity name, prefill areas and temperature
+  const handleNameChange = (val: string) => {
+    setActName(val);
+    const norm = val.trim().toLowerCase();
+    const match = activities.find((a) => a.name.trim().toLowerCase() === norm);
+    if (match) {
+      if (match.areaIds && match.areaIds.length > 0) setActAreaIds(match.areaIds);
+      setActTemperature(match.temperature);
+    }
+  };
 
   // Keyboard shortcut listener (N: new activity, Esc: close)
   useEffect(() => {
@@ -67,7 +99,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activePopover, setActivePopover]);
 
-  // Create Activity Submit
+  // Create / Accumulate Activity Submit
   const handleCreateActivity = (e: React.FormEvent) => {
     e.preventDefault();
     if (!actName.trim()) return;
@@ -82,7 +114,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
     });
 
     setActName('');
-    setActHours('2.0');
+    setActHours('1.0');
     setActNotes('');
     setActivePopover(null);
   };
@@ -114,9 +146,9 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-full max-w-sm sm:max-w-md z-40 p-5 rounded-2xl shadow-2xl backdrop-blur-2xl bg-[#101218]/95 border border-white/10 text-gray-200 animate-fadeIn">
           <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-indigo-500" />
+              <span className="w-2 h-2 rounded-full bg-sky-500" />
               <h3 className="font-semibold text-xs uppercase tracking-wider text-gray-100">
-                {activePopover === 'activity' && 'Registrar Actividad'}
+                {activePopover === 'activity' && 'Registrar / Sumar Actividad'}
                 {activePopover === 'areas' && 'Aspectos de Vida'}
                 {activePopover === 'filters' && 'Herramientas de Vista'}
               </h3>
@@ -139,13 +171,34 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                 </label>
                 <input
                   type="text"
+                  list="activity-suggestions-list"
                   value={actName}
-                  onChange={(e) => setActName(e.target.value)}
-                  placeholder="Ej. Sesión de Deep Work, Meditación..."
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="Ej. Cocina & Nutrición, Deep Work..."
                   autoFocus
                   required
-                  className="w-full px-3 py-2 rounded-xl text-xs bg-[#08090d] border border-white/10 text-white outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full px-3 py-2 rounded-xl text-xs bg-[#08090d] border border-white/10 text-white outline-none focus:border-sky-500 transition-colors"
                 />
+                <datalist id="activity-suggestions-list">
+                  {previousActivityNames.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+
+                {/* Real-time Accumulation Feedback */}
+                {existingTodayActivity && (
+                  <div className="mt-2 p-2 rounded-lg bg-sky-950/40 border border-sky-500/30 flex items-center gap-2 text-[11px] text-sky-300 animate-fadeIn">
+                    <Zap size={13} className="shrink-0 text-sky-400" />
+                    <span>
+                      Esta actividad ya existe hoy ({existingTodayActivity.hours}h). Se sumarán{' '}
+                      <strong>{actHours}h</strong> para un total de{' '}
+                      <strong>
+                        {(existingTodayActivity.hours + (parseFloat(actHours) || 0)).toFixed(1)}h
+                      </strong>{' '}
+                      en su nodo.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Hours */}
@@ -153,9 +206,9 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                 <div className="flex items-center justify-between mb-1.5 text-[11px] text-gray-400">
                   <span className="flex items-center gap-1.5 font-medium uppercase tracking-wider">
                     <Clock size={12} />
-                    Horas Invertidas
+                    Horas a Añadir
                   </span>
-                  <span className="font-mono font-bold text-indigo-400">{actHours}h</span>
+                  <span className="font-mono font-bold text-sky-400">{actHours}h</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -165,7 +218,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                     step="0.25"
                     value={actHours}
                     onChange={(e) => setActHours(e.target.value)}
-                    className="w-full h-1.5 rounded-lg cursor-pointer accent-indigo-500 bg-[#08090d]"
+                    className="w-full h-1.5 rounded-lg cursor-pointer accent-sky-500 bg-[#08090d]"
                   />
                   <input
                     type="number"
@@ -198,7 +251,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                         onClick={() => toggleAreaForActivity(area.id)}
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all ${
                           isSelected
-                            ? 'bg-[#181b24] border-indigo-500/80 text-white font-medium shadow-sm'
+                            ? 'bg-[#181b24] border-sky-500/80 text-white font-medium shadow-sm'
                             : 'bg-[#08090d]/60 border-white/5 text-gray-400 hover:border-white/20'
                         }`}
                       >
@@ -243,7 +296,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                 className="w-full py-2.5 rounded-xl font-medium text-xs flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20 transition-all active:scale-98"
               >
                 <Sparkles size={14} />
-                <span>Agregar al Espacio</span>
+                <span>{existingTodayActivity ? 'Sumar al Nodo de Hoy' : 'Agregar al Espacio'}</span>
               </button>
             </form>
           )}
@@ -262,7 +315,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                   onChange={(e) => setNewAreaName(e.target.value)}
                   placeholder="Ej. Espiritualidad, Finanzas..."
                   required
-                  className="w-full px-2.5 py-1.5 rounded-lg text-xs bg-[#101218] border border-white/10 text-white outline-none focus:border-indigo-500"
+                  className="w-full px-2.5 py-1.5 rounded-lg text-xs bg-[#101218] border border-white/10 text-white outline-none focus:border-sky-500"
                 />
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-1.5">
@@ -280,7 +333,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                   </div>
                   <button
                     type="submit"
-                    className="px-3 py-1 rounded-lg text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white"
+                    className="px-3 py-1 rounded-lg text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white"
                   >
                     Crear
                   </button>
@@ -303,7 +356,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                       onClick={() => onToggleAreaVisibility(area.id)}
                       className="p-1 rounded text-gray-400 hover:text-white"
                     >
-                      {area.visible ? <Eye size={13} className="text-indigo-400" /> : <EyeOff size={13} />}
+                      {area.visible ? <Eye size={13} className="text-sky-400" /> : <EyeOff size={13} />}
                     </button>
                   </div>
                 ))}
@@ -320,7 +373,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                   type="checkbox"
                   checked={settings.showLabels}
                   onChange={(e) => onUpdateSettings({ showLabels: e.target.checked })}
-                  className="accent-indigo-500 cursor-pointer"
+                  className="accent-sky-500 cursor-pointer"
                 />
               </label>
 
@@ -360,7 +413,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
                             }
                             onUpdateSettings({ activeAreaFilters: next });
                           }}
-                          className="accent-indigo-500 cursor-pointer"
+                          className="accent-sky-500 cursor-pointer"
                         />
                       </label>
                     );
@@ -382,7 +435,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
           onClick={() => togglePopover('activity')}
           className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
             activePopover === 'activity'
-              ? 'bg-indigo-600 text-white shadow-md'
+              ? 'bg-sky-600 text-white shadow-md'
               : 'bg-[#181b24] text-gray-200 hover:text-white'
           }`}
         >
@@ -396,7 +449,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
           onClick={() => togglePopover('areas')}
           title="Aspectos de Vida"
           className={`p-2 rounded-full transition-colors ${
-            activePopover === 'areas' ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-400 hover:text-white'
+            activePopover === 'areas' ? 'text-sky-400 bg-sky-500/10' : 'text-gray-400 hover:text-white'
           }`}
         >
           <Layers size={15} />
@@ -407,7 +460,7 @@ export const FloatingDock: React.FC<FloatingDockProps> = ({
           onClick={() => togglePopover('filters')}
           title="Filtros y Visibilidad"
           className={`p-2 rounded-full transition-colors ${
-            activePopover === 'filters' ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-400 hover:text-white'
+            activePopover === 'filters' ? 'text-sky-400 bg-sky-500/10' : 'text-gray-400 hover:text-white'
           }`}
         >
           <SlidersHorizontal size={15} />
