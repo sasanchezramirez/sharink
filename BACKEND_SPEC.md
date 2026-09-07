@@ -340,13 +340,13 @@ Projects/sharink/backend/
 
 ### FASE 2 — Esquemas y Servicios de Dominio
 
-#### `[ ] T11 · Schemas Pydantic de Area`
+#### `[x] T11 · Schemas Pydantic de Area`
 - **Archivos:** `backend/app/schemas/area.py`
 - **Acciones:** `AreaCreate` (name 1–60, color hex validado por regex `^#[0-9a-fA-F]{6}$`), `AreaUpdate` (parcial), `AreaRead`.
 - **Depende de:** T07
 - **Aceptación:** Un color inválido lanza `ValidationError`.
 
-#### `[ ] T12 · Schemas Pydantic de Activity`
+#### `[x] T12 · Schemas Pydantic de Activity`
 - **Archivos:** `backend/app/schemas/activity.py`
 - **Acciones:**
   1. `ActivityCreate`: `name` (str, sanitizado con `strip()`, 1–120), `hours` (0.1–24.0), `temperature` (−5.0–+5.0), `date`, `notes?`, `area_ids: list[UUID]`.
@@ -357,7 +357,7 @@ Projects/sharink/backend/
 - **Depende de:** T11
 - **Aceptación:** Tests de límites: `temperature=5.1` y `hours=0` fallan; `temperature=-5.0` pasa.
 
-#### `[ ] T13 · Servicio ActivityAccumulator (acumulación intra-día)`
+#### `[x] T13 · Servicio ActivityAccumulator (acumulación intra-día)`
 - **Archivos:** `backend/app/services/accumulator.py`
 - **Acciones:**
   1. `normalize_name(name) -> str` (`strip().lower()`, colapsa espacios internos).
@@ -368,9 +368,9 @@ Projects/sharink/backend/
      - Si existe: suma horas (cap 24.0), recalcula temperatura ponderada, une `area_ids` (set), fusiona notas.
      - Si no existe: inserta nuevo registro.
 - **Depende de:** T12
-- **Aceptación:** Función pura `weighted_temperature(4.0, 1, -2.0, 3) == 0.5`; el upsert nunca crea duplicados.
+- **Aceptación:** Función pura `weighted_temperature(4.0, 1, -2.0, 3) == -0.5`; el upsert nunca crea duplicados.
 
-#### `[ ] T14 · Servicio AggregationService (consolidación temporal)`
+#### `[x] T14 · Servicio AggregationService (consolidación temporal)`
 - **Archivos:** `backend/app/services/aggregator.py`
 - **Acciones:**
   1. `resolve_range(view, focal_date) -> tuple[date|None, date|None]` para `day` / `week` (Lunes–Domingo) / `month` / `global`.
@@ -380,7 +380,7 @@ Projects/sharink/backend/
 - **Depende de:** T13
 - **Aceptación:** Con el seed, `view=week` consolida los nombres repetidos en un solo nodo con horas sumadas.
 
-#### `[ ] T15 · Tests unitarios de acumulación y agregación`
+#### `[x] T15 · Tests unitarios de acumulación y agregación`
 - **Archivos:** `backend/tests/test_accumulator.py`, `backend/tests/test_aggregator.py`
 - **Acciones:** Cubrir fórmula ponderada, clamps, normalización de nombres, límites de semana/mes y consolidación multi-día.
 - **Depende de:** T14
@@ -390,7 +390,7 @@ Projects/sharink/backend/
 
 ### FASE 3 — Capa HTTP (FastAPI)
 
-#### `[ ] T16 · App principal, CORS y healthcheck`
+#### `[x] T16 · App principal, CORS y healthcheck`
 - **Archivos:** `backend/app/main.py`
 - **Acciones:**
   1. `FastAPI(title="Sharink API", version="1.0.0")`.
@@ -400,38 +400,38 @@ Projects/sharink/backend/
 - **Depende de:** T05
 - **Aceptación:** `uvicorn app.main:app --reload` sirve `/docs` y `/api/health` responde 200.
 
-#### `[ ] T17 · Identidad de usuario (dependencia current_user)`
+#### `[x] T17 · Identidad de usuario (dependencia current_user)`
 - **Objetivo:** Aislar los datos por usuario sin bloquear el desarrollo con auth completa.
 - **Archivos:** `backend/app/deps.py`
 - **Acciones:** Dependencia `get_current_user_id()` que lee la cabecera `X-User-Id` y cae en `DEFAULT_USER_ID` si falta. Documentar que se sustituirá por JWT en la fase 6.
 - **Depende de:** T16
 - **Aceptación:** Todos los routers reciben `user_id` por inyección, nunca de forma literal.
 
-#### `[ ] T18 · Router de áreas (/api/areas)`
+#### `[x] T18 · Router de áreas (/api/areas)`
 - **Archivos:** `backend/app/routers/areas.py`
 - **Acciones:** `GET /api/areas`, `POST /api/areas`, `PUT /api/areas/{id}`, `DELETE /api/areas/{id}` (con verificación de pertenencia → 404 si es de otro usuario).
 - **Depende de:** T17
 - **Aceptación:** CRUD completo verificado desde `/docs`.
 
-#### `[ ] T19 · Router de actividades: POST con acumulación`
+#### `[x] T19 · Router de actividades: POST con acumulación`
 - **Archivos:** `backend/app/routers/activities.py`
 - **Acciones:** `POST /api/activities` delegando en `upsert_activity`; devuelve `201` en creación y `200` en fusión, con `ActivityRead`.
 - **Depende de:** T18
 - **Aceptación:** Dos POST del mismo nombre y fecha devuelven un único registro con horas sumadas.
 
-#### `[ ] T20 · Router de actividades: GET con vistas temporales`
+#### `[x] T20 · Router de actividades: GET con vistas temporales`
 - **Archivos:** `backend/app/routers/activities.py`
 - **Acciones:** `GET /api/activities?view=day|week|month|global&date=YYYY-MM-DD` usando `AggregationService`; validar `view` con `Enum` y `date` con default = hoy.
 - **Depende de:** T19
 - **Aceptación:** `view=global` devuelve un nodo por nombre normalizado en todo el histórico.
 
-#### `[ ] T21 · Router de actividades: PUT y DELETE`
+#### `[x] T21 · Router de actividades: PUT y DELETE`
 - **Archivos:** `backend/app/routers/activities.py`
 - **Acciones:** `PUT /api/activities/{id}` (recalcula `name_normalized` y reasigna áreas) y `DELETE /api/activities/{id}`, ambos con validación de pertenencia (404 si `user_id` no coincide).
 - **Depende de:** T20
 - **Aceptación:** Un `id` ajeno devuelve 404, nunca 200 ni 500.
 
-#### `[ ] T22 · Tests de integración de endpoints`
+#### `[x] T22 · Tests de integración de endpoints`
 - **Archivos:** `backend/tests/test_activities.py`, `backend/tests/conftest.py`
 - **Acciones:** Fixtures con `httpx.AsyncClient` + base de datos de test; cubrir el flujo completo (crear área → crear actividad → acumular → consultar week → editar → borrar).
 - **Depende de:** T21
