@@ -315,7 +315,7 @@ Projects/sharink/backend/
 - **Depende de:** T07
 - **Aceptación:** `\d activities` en psql muestra ambos índices tras migrar.
 
-#### `[ ] T09 · Migraciones con Alembic`
+#### `[x] T09 · Migraciones con Alembic`
 - **Archivos:** `backend/alembic.ini`, `backend/migrations/env.py`, `backend/migrations/versions/*.py`
 - **Acciones:**
   1. `alembic init migrations`; adaptar `env.py` a async y a `SQLModel.metadata`.
@@ -325,7 +325,7 @@ Projects/sharink/backend/
 - **Depende de:** T08
 - **Aceptación:** Las 4 tablas existen en PostgreSQL; `alembic downgrade base && upgrade head` es idempotente.
 
-#### `[ ] T10 · Seed de datos de desarrollo`
+#### `[x] T10 · Seed de datos de desarrollo`
 - **Objetivo:** Portar el dataset semilla de 20 actividades (Lun–Dom) del frontend a la DB.
 - **Archivos:** `backend/app/seed.py`
 - **Acciones:**
