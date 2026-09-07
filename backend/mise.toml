@@ -1,0 +1,8 @@
+[tools]
+python = "3.12.14"
+poetry = "2.4.3"
+
+[env]
+# Poetry crea el entorno virtual dentro del proyecto (backend/.venv)
+POETRY_VIRTUALENVS_IN_PROJECT = "true"
+_.python.venv = { path = ".venv", create = false }

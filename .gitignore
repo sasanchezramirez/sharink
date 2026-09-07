@@ -23,3 +23,17 @@ dist-ssr
 *.sln
 *.sw?
 *.tsbuildinfo
+
+# Python / Backend
+backend/.venv/
+backend/poetry.toml
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Entorno
+.env
+.env.*
+!.env.example

@@ -1,0 +1,35 @@
+[project]
+name = "sharink-api"
+version = "1.0.0"
+description = "Sharink API — visualizador espacial de actividades y distribución del tiempo"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "Santiago" }]
+
+dependencies = [
+    "fastapi (>=0.115,<0.116)",
+    "uvicorn[standard] (>=0.34,<0.35)",
+    "sqlmodel (>=0.0.22,<0.0.23)",
+    "asyncpg (>=0.30,<0.31)",
+    "alembic (>=1.14,<2.0)",
+    "pydantic-settings (>=2.7,<3.0)",
+]
+
+[project.optional-dependencies]
+
+[tool.poetry]
+packages = [{ include = "app" }]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.25"
+httpx = "^0.28"
+ruff = "^0.9"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"
