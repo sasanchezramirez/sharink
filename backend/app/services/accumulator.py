@@ -1,8 +1,8 @@
 import uuid
 
+from sqlalchemy.orm import selectinload
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.models.activity import Activity
 from app.models.area import LifeArea

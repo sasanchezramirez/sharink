@@ -1,8 +1,5 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 import uuid
-
-from pydantic import ValidationError
-import pytest
 
 from app.models.activity import Activity
 from app.models.area import LifeArea
@@ -14,6 +11,8 @@ from app.schemas.activity import (
     ConsolidatedNode,
 )
 from app.schemas.area import AreaRead
+from pydantic import ValidationError
+import pytest
 
 
 def test_activity_base():
@@ -192,7 +191,7 @@ def test_activity_read_from_attributes():
     u_id = uuid.uuid4()
     act_id = uuid.uuid4()
     area_id = uuid.uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     today = date(2026, 9, 7)
 
     life_area = LifeArea(

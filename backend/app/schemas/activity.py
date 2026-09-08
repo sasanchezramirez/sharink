@@ -180,6 +180,6 @@ class ConsolidatedNode(BaseModel):
     def clean_area_ids(cls, v: Any) -> list[Any]:
         if v is None:
             return []
-        if isinstance(v, (list, set, tuple)):
+        if isinstance(v, list | set | tuple):
             return [item for item in v if item is not None]
         return v

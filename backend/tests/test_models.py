@@ -1,12 +1,11 @@
 from datetime import date
 import uuid
 
+from app.database import close_db, get_session, init_db
+from app.models import Activity, ActivityAreaLink, LifeArea, User
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import SQLModel, select
-
-from app.database import close_db, get_session, init_db
-from app.models import Activity, ActivityAreaLink, LifeArea, User
 
 
 @pytest.fixture(autouse=True)

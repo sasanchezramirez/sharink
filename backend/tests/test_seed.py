@@ -1,9 +1,8 @@
-import pytest
-from sqlmodel import col, func, select
-
 from app.database import close_db, get_session
 from app.models import Activity, LifeArea, User
 from app.seed import DEMO_USER_ID, seed_data
+import pytest
+from sqlmodel import col, func, select
 
 
 @pytest.fixture(autouse=True)

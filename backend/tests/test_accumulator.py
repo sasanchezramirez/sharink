@@ -1,9 +1,6 @@
 from datetime import date
 import uuid
 
-import pytest
-from sqlmodel import select
-
 from app.database import close_db, get_session, init_db
 from app.models import Activity, LifeArea, User
 from app.schemas.activity import ActivityCreate
@@ -13,6 +10,8 @@ from app.services.accumulator import (
     upsert_activity,
     weighted_temperature,
 )
+import pytest
+from sqlmodel import select
 
 
 @pytest.fixture(autouse=True)

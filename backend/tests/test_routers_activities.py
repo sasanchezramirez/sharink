@@ -1,15 +1,14 @@
 from datetime import date
 from uuid import uuid4
 
-from httpx import ASGITransport, AsyncClient
-import pytest
-from sqlmodel import select
-
 from app.config import get_settings
 from app.database import close_db, get_session, init_db
 from app.main import app
 from app.models import Activity, ActivityAreaLink, LifeArea, User
 from app.seed import seed_data
+from httpx import ASGITransport, AsyncClient
+import pytest
+from sqlmodel import select
 
 settings = get_settings()
 

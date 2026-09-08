@@ -1,8 +1,7 @@
+from app.database import close_db, get_session, init_db
 import pytest
 from sqlmodel import text
 from sqlmodel.ext.asyncio.session import AsyncSession
-
-from app.database import close_db, get_session, init_db
 
 
 @pytest.fixture(autouse=True)

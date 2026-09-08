@@ -476,19 +476,19 @@ Projects/sharink/backend/
 
 ### FASE 5 — Empaquetado y Calidad
 
-#### `[ ] T27 · Dockerfile y docker-compose completo`
+#### `[x] T27 · Dockerfile y docker-compose completo`
 - **Archivos:** `backend/Dockerfile`, `backend/docker-compose.yml`, `backend/.dockerignore`
 - **Acciones:** Imagen multi-stage `python:3.12-slim`: etapa `builder` que instala Poetry y exporta el entorno desde `poetry.lock`, etapa final solo con el venv, usuario no-root y `uvicorn` como entrypoint; compose con servicios `api` + `db` y `depends_on` con healthcheck.
 - **Depende de:** T22
 - **Aceptación:** `docker compose up` levanta la API en `:8000` con migraciones aplicadas.
 
-#### `[ ] T28 · Linter, formato y CI`
+#### `[x] T28 · Linter, formato y CI`
 - **Archivos:** `backend/pyproject.toml`, `.github/workflows/ci.yml`
 - **Acciones:** Ampliar `[tool.ruff]` en el `pyproject.toml` existente (reglas, `line-length`, `target-version = "py312"`); en CI usar `poetry install --sync` con caché del `poetry.lock` y ejecutar `ruff check`, `ruff format --check`, `pytest` y `npm run build`.
 - **Depende de:** T27
 - **Aceptación:** El pipeline pasa en verde en un push limpio.
 
-#### `[ ] T29 · Documentación de arranque`
+#### `[x] T29 · Documentación de arranque`
 - **Archivos:** `backend/README.md`, `README.md` (raíz)
 - **Acciones:** Documentar requisitos, `.env`, migraciones, seed, arranque en dev, arranque con Docker y tabla de endpoints.
 - **Depende de:** T28

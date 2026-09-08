@@ -3,9 +3,8 @@ from datetime import date, timedelta
 import uuid
 
 from sqlalchemy.orm import selectinload
-from sqlmodel import text
+from sqlmodel import select, text
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
 
 from app.models.activity import Activity
 from app.schemas.activity import ConsolidatedNode
@@ -91,7 +90,7 @@ async def fetch_nodes(
 
     query = text(f"""
         WITH filtered_acts AS (
-            SELECT 
+            SELECT
                 a.id,
                 a.name,
                 a.name_normalized,
@@ -102,7 +101,7 @@ async def fetch_nodes(
               {date_filter}
         ),
         act_stats AS (
-            SELECT 
+            SELECT
                 fa.name_normalized,
                 MAX(fa.name) AS name,
                 ROUND(SUM(fa.hours)::numeric, 2) AS total_hours,
@@ -114,14 +113,14 @@ async def fetch_nodes(
             GROUP BY fa.name_normalized
         ),
         act_areas AS (
-            SELECT 
+            SELECT
                 fa.name_normalized,
                 array_agg(DISTINCT aa.area_id) FILTER (WHERE aa.area_id IS NOT NULL) AS area_ids
             FROM filtered_acts fa
             LEFT JOIN activity_areas aa ON fa.id = aa.activity_id
             GROUP BY fa.name_normalized
         )
-        SELECT 
+        SELECT
             s.id,
             s.activity_ids,
             s.name,

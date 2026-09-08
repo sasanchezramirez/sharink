@@ -1,8 +1,6 @@
 from datetime import date, timedelta
 import uuid
 
-import pytest
-
 from app.config import get_settings
 from app.database import close_db, get_session, init_db
 from app.models import Activity, User
@@ -14,6 +12,7 @@ from app.services.aggregator import (
     fetch_raw_activities,
     resolve_range,
 )
+import pytest
 
 settings = get_settings()
 

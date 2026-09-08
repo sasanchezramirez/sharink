@@ -1,12 +1,11 @@
 from collections.abc import AsyncGenerator
 from uuid import UUID, uuid4
 
-from httpx import ASGITransport, AsyncClient
-import pytest
-
 from app.database import close_db, get_session, init_db
 from app.main import app
 from app.models import LifeArea, User
+from httpx import ASGITransport, AsyncClient
+import pytest
 
 
 @pytest.fixture(autouse=True)

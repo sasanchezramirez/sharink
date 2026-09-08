@@ -1,11 +1,10 @@
 from uuid import uuid4
 
+from app.config import get_settings
+from app.deps import UserIdDep, get_current_user_id
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 import pytest
-
-from app.config import get_settings
-from app.deps import UserIdDep, get_current_user_id
 
 settings = get_settings()
 

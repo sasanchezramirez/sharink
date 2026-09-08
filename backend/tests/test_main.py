@@ -1,9 +1,8 @@
+from app.database import close_db, init_db
+from app.main import app
 from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 import pytest
-
-from app.database import close_db, init_db
-from app.main import app
 
 
 @pytest.fixture(autouse=True)

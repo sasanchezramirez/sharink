@@ -1,10 +1,9 @@
-import uuid
 from pathlib import Path
-
-import pytest
-from pydantic import ValidationError
+import uuid
 
 from app.config import DEV_SECRET_KEY, Settings, get_settings
+from pydantic import ValidationError
+import pytest
 
 
 def test_get_settings_cache():
@@ -27,7 +26,7 @@ def test_settings_defaults(monkeypatch):
     )
     assert settings.ENV == "dev"
     assert settings.SECRET_KEY == DEV_SECRET_KEY
-    assert settings.DEFAULT_USER_ID == uuid.UUID("00000000-0000-0000-0000-000000000001")
+    assert uuid.UUID("00000000-0000-0000-0000-000000000001") == settings.DEFAULT_USER_ID
     assert settings.CORS_ORIGINS == ["http://localhost:5173", "http://localhost:3000"]
 
 
@@ -55,7 +54,7 @@ def test_env_restriction(monkeypatch):
                 "SECRET_KEY", "a" * 32
             )  # prod requires a non-default valid secret key
         settings = Settings(_env_file=None)
-        assert settings.ENV == valid_env
+        assert valid_env == settings.ENV
 
 
 def test_database_url_validation(monkeypatch):
@@ -92,7 +91,7 @@ def test_prod_secret_key_valid(monkeypatch):
     monkeypatch.setenv("SECRET_KEY", valid_key)
     settings = Settings(_env_file=None)
     assert settings.ENV == "prod"
-    assert settings.SECRET_KEY == valid_key
+    assert valid_key == settings.SECRET_KEY
 
 
 def test_cwd_does_not_hijack_env_file(tmp_path: Path, monkeypatch):

@@ -1,11 +1,11 @@
 from uuid import UUID
 
+from app.database import get_session
+from app.models import Activity, ActivityAreaLink, LifeArea, User
 from httpx import AsyncClient
 import pytest
 from sqlmodel import select
 
-from app.database import get_session
-from app.models import Activity, ActivityAreaLink, LifeArea, User
 from tests.conftest import create_user_in_db
 
 

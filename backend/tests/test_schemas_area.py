@@ -1,11 +1,10 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import uuid
-
-from pydantic import ValidationError
-import pytest
 
 from app.models.area import LifeArea
 from app.schemas.area import AreaBase, AreaCreate, AreaRead, AreaUpdate
+from pydantic import ValidationError
+import pytest
 
 
 def test_area_base():
@@ -119,7 +118,7 @@ def test_area_read_from_attributes():
     """AreaRead should validate and read directly from LifeArea ORM model."""
     area_id = uuid.uuid4()
     user_id = uuid.uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     life_area = LifeArea(
         id=area_id,
