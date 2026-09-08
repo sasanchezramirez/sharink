@@ -146,6 +146,14 @@ class ActivityRead(ActivityBase):
 class ConsolidatedNode(BaseModel):
     """Consolidated activity node for spatial graph and periodic views."""
 
+    id: uuid.UUID | None = Field(
+        default=None,
+        description="ID of the activity entry (or representative entry when aggregated)",
+    )
+    activity_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description="List of all activity entry IDs consolidated into this node",
+    )
     name: str = Field(description="Display name of the activity")
     name_normalized: str = Field(description="Normalized key used for aggregation")
     total_hours: float = Field(

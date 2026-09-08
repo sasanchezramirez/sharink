@@ -1,6 +1,13 @@
 import React from 'react';
 import { ViewMode } from '../types';
-import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  Loader2,
+  WifiOff,
+  RotateCcw,
+} from 'lucide-react';
 
 interface TopBarProps {
   viewMode: ViewMode;
@@ -8,6 +15,9 @@ interface TopBarProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   totalHours: number;
+  loading?: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -16,6 +26,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   selectedDate,
   onDateChange,
   totalHours,
+  loading = false,
+  error = null,
+  onRetry,
 }) => {
   const handlePrevDate = () => {
     const d = new Date(selectedDate);
@@ -59,13 +72,36 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <header className="h-11 px-6 flex items-center justify-between z-30 select-none bg-[#08090d]/90 backdrop-blur-xl border-b border-white/5 text-gray-200">
-      {/* Brand */}
+      {/* Brand & Connection State */}
       <div className="flex items-center gap-2.5">
         <span className="font-semibold text-xs tracking-wider uppercase text-gray-100">
           sharink
         </span>
         <span className="w-1 h-1 rounded-full bg-sky-500/80" />
         <span className="text-[10px] text-gray-500 font-mono">espacio vital</span>
+
+        {loading && (
+          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-[10px] text-sky-400">
+            <Loader2 size={10} className="animate-spin" />
+            <span className="font-mono">sincronizando</span>
+          </span>
+        )}
+
+        {error && (
+          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-400">
+            <WifiOff size={10} />
+            <span className="font-mono">desconectado</span>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                title="Reintentar conexión"
+                className="hover:text-rose-200 transition-colors ml-0.5"
+              >
+                <RotateCcw size={10} />
+              </button>
+            )}
+          </span>
+        )}
       </div>
 
       {/* Center: View Modes & Date */}

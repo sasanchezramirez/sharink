@@ -2,12 +2,23 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { Activity, LifeArea, ViewportSettings, ActivityNode } from '../types';
 import { getTemperatureColor, getTemperatureLabel } from '../utils/colors';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import {
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Sparkles,
+  Plus,
+  WifiOff,
+  Loader2,
+} from 'lucide-react';
 
 interface GraphCanvasProps {
   activities: Activity[];
   areas: LifeArea[];
   settings: ViewportSettings;
+  loading?: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
   onSelectActivity: (activity: Activity) => void;
   onToggleAreaVisibility: (areaId: string) => void;
   onOpenNewActivity: () => void;
@@ -23,7 +34,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   activities,
   areas,
   settings,
+  loading = false,
+  error = null,
+  onRetry,
   onSelectActivity,
+  onOpenNewActivity,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -477,6 +492,85 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 "{hovered.activity.notes}"
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Network / Connection Error State with Retry Button */}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center p-4 z-40 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="max-w-sm w-full p-6 rounded-2xl bg-[#10121a]/95 border border-rose-500/30 shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 mx-auto rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+              <WifiOff size={22} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-white">
+                Error de conexión con el servidor
+              </h3>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                {error.message ||
+                  'No se pudo comunicar con el servidor API. Verifica que el backend esté en ejecución.'}
+              </p>
+            </div>
+            {onRetry && (
+              <button
+                onClick={onRetry}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white shadow-lg transition-colors"
+              >
+                <RotateCcw size={13} />
+                <span>Reintentar conexión</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Cosmic Deep Space Loading State (Initial or Empty) */}
+      {loading && activities.length === 0 && !error && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-30">
+          <div className="relative flex items-center justify-center mb-4">
+            <div className="w-16 h-16 rounded-full border border-sky-500/20 animate-ping opacity-30" />
+            <div className="w-12 h-12 rounded-full border border-sky-500/40 border-t-sky-400 animate-spin absolute" />
+            <div className="w-3 h-3 rounded-full bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.8)]" />
+          </div>
+          <span className="text-xs font-mono text-gray-400 animate-pulse tracking-wide">
+            Sincronizando espacio vital...
+          </span>
+        </div>
+      )}
+
+      {/* Background Fetching Indicator */}
+      {loading && activities.length > 0 && !error && (
+        <div className="absolute top-4 right-6 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#12141e]/90 backdrop-blur-md border border-white/10 text-[11px] text-sky-400 shadow-xl pointer-events-none animate-fadeIn z-20">
+          <Loader2 size={12} className="animate-spin" />
+          <span className="font-mono text-[10.5px]">Sincronizando...</span>
+        </div>
+      )}
+
+      {/* Deep Space Obsidian Empty State */}
+      {!loading && !error && visibleActivities.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none z-10">
+          <div className="max-w-sm w-full p-6 rounded-2xl bg-[#10121a]/85 backdrop-blur-md border border-white/5 shadow-2xl text-center space-y-3.5 pointer-events-auto animate-fadeIn">
+            <div className="w-11 h-11 mx-auto rounded-full bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+              <Sparkles size={20} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-gray-100">
+                Aún no hay actividades
+              </h3>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                {settings.viewMode === 'day'
+                  ? 'No hay actividades registradas para este día. Comienza creando tu primera órbita vital.'
+                  : 'No se encontraron actividades registradas para este período de tiempo.'}
+              </p>
+            </div>
+            <button
+              onClick={onOpenNewActivity}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white shadow-lg transition-colors"
+            >
+              <Plus size={14} />
+              <span>Registrar actividad</span>
+            </button>
           </div>
         </div>
       )}

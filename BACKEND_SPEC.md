@@ -441,7 +441,7 @@ Projects/sharink/backend/
 
 ### FASE 4 — Integración con el Frontend
 
-#### `[ ] T23 · Cliente API en el frontend`
+#### `[x] T23 · Cliente API en el frontend`
 - **Archivos:** `src/api/client.ts`, `src/api/types.ts`, `.env.local` (`VITE_API_URL`)
 - **Acciones:**
   1. `request<T>()` genérico con `fetch`, cabecera `X-User-Id`, manejo de errores tipado.
@@ -450,13 +450,13 @@ Projects/sharink/backend/
 - **Depende de:** T22
 - **Aceptación:** `npm run lint` (tsc --noEmit) sin errores.
 
-#### `[ ] T24 · Hook de estado remoto`
+#### `[x] T24 · Hook de estado remoto`
 - **Archivos:** `src/hooks/useActivities.ts`, `src/hooks/useAreas.ts`
 - **Acciones:** Encapsular fetch + estados `loading` / `error` / `data`, refetch al cambiar `view` o `date`, y actualización optimista al crear actividad.
 - **Depende de:** T23
 - **Aceptación:** Cambiar de vista Día→Semana dispara una sola petición y repinta el grafo.
 
-#### `[ ] T25 · Migrar App.tsx de localStorage a la API`
+#### `[x] T25 · Migrar App.tsx de localStorage a la API`
 - **Archivos:** `src/App.tsx`, `src/components/EditActivityModal.tsx`, `src/utils/storage.ts`
 - **Acciones:**
   1. Sustituir la fuente de datos por los hooks de T24.
@@ -466,7 +466,7 @@ Projects/sharink/backend/
 - **Depende de:** T24
 - **Aceptación:** La app funciona sin `localStorage`; recargar el navegador conserva los datos vía API.
 
-#### `[ ] T26 · Estados de carga, error y vacío en la UI`
+#### `[x] T26 · Estados de carga, error y vacío en la UI`
 - **Archivos:** `src/components/GraphCanvas.tsx`, `src/components/TopBar.tsx`
 - **Acciones:** Skeleton/spinner durante la carga, toast de error de red con reintento, y estado vacío ("Aún no hay actividades") coherente con el tema Deep Space Obsidian.
 - **Depende de:** T25

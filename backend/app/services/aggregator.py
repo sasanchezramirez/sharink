@@ -107,7 +107,9 @@ async def fetch_nodes(
                 MAX(fa.name) AS name,
                 ROUND(SUM(fa.hours)::numeric, 2) AS total_hours,
                 ROUND((SUM(fa.hours * fa.temperature) / NULLIF(SUM(fa.hours), 0))::numeric, 2) AS weighted_temperature,
-                COUNT(fa.id) AS entry_count
+                COUNT(fa.id) AS entry_count,
+                (array_agg(fa.id))[1] AS id,
+                array_agg(fa.id) AS activity_ids
             FROM filtered_acts fa
             GROUP BY fa.name_normalized
         ),
@@ -120,6 +122,8 @@ async def fetch_nodes(
             GROUP BY fa.name_normalized
         )
         SELECT 
+            s.id,
+            s.activity_ids,
             s.name,
             s.name_normalized,
             s.total_hours,
@@ -136,6 +140,8 @@ async def fetch_nodes(
 
     nodes: list[ConsolidatedNode] = [
         ConsolidatedNode(
+            id=row.id,
+            activity_ids=list(row.activity_ids or []),
             name=row.name,
             name_normalized=row.name_normalized,
             total_hours=float(row.total_hours),
