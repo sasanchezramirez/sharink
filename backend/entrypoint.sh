@@ -1,11 +1,14 @@
 #!/bin/sh
 set -e
 
-echo "Applying database migrations..."
+echo "Applying database migrations to 'sharink' schema..."
 alembic upgrade head
 
-echo "Seeding initial development data (idempotent)..."
-python -m app.seed || echo "Seed skipped or already applied"
+if [ "$ENV" = "dev" ]; then
+    echo "Seeding initial development data (idempotent)..."
+    python -m app.seed || echo "Seed skipped or already applied"
+fi
 
-echo "Starting Uvicorn server..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+PORT="${PORT:-8000}"
+echo "Starting Uvicorn server on port $PORT..."
+exec uvicorn app.main:app --host 0.0.0.0 --port "$PORT"

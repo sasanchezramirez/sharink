@@ -41,11 +41,12 @@ origins = (
     if isinstance(settings.CORS_ORIGINS, list)
     else [settings.CORS_ORIGINS]
 )
+allow_all = "*" in origins
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"] if allow_all else origins,
+    allow_credentials=not allow_all,
     allow_methods=["*"],
     allow_headers=["*"],
 )
