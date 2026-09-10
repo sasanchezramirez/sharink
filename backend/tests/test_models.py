@@ -19,15 +19,20 @@ def test_models_metadata_registered():
     tables = SQLModel.metadata.tables
     expected_tables = ["users", "activities", "life_areas", "activity_areas"]
     for table_name in expected_tables:
-        assert table_name in tables
+        key = f"sharink.{table_name}" if SQLModel.metadata.schema else table_name
+        assert key in tables
 
     # Check composite PK on activity_areas
-    link_table = tables["activity_areas"]
+    link_key = (
+        "sharink.activity_areas" if SQLModel.metadata.schema else "activity_areas"
+    )
+    link_table = tables[link_key]
     pk_cols = [c.name for c in link_table.primary_key.columns]
     assert sorted(pk_cols) == ["activity_id", "area_id"]
 
     # Check unique constraint on activities
-    act_table = tables["activities"]
+    act_key = "sharink.activities" if SQLModel.metadata.schema else "activities"
+    act_table = tables[act_key]
     constraint_names = [c.name for c in act_table.constraints if c.name is not None]
     assert "uq_activities_user_date_name_norm" in constraint_names
 

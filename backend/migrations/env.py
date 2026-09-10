@@ -4,7 +4,7 @@ from logging.config import fileConfig
 from alembic import context
 from app.config import get_settings
 import app.models  # noqa: F401 - ensure all models are registered in metadata
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
@@ -31,6 +31,9 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        version_table="alembic_version",
+        version_table_schema="sharink",
+        include_schemas=True,
     )
 
     with context.begin_transaction():
@@ -38,10 +41,20 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
+    is_postgres = connection.dialect.name == "postgresql"
+    schema_name = "sharink" if is_postgres else None
+
+    if is_postgres:
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS sharink;"))
+        connection.execute(text("SET search_path TO sharink, public;"))
+
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
+        version_table="alembic_version",
+        version_table_schema=schema_name,
+        include_schemas=True,
     )
 
     with context.begin_transaction():
@@ -61,6 +74,7 @@ async def run_async_migrations() -> None:
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
+        await connection.commit()
 
     await connectable.dispose()
 

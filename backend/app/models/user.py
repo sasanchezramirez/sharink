@@ -3,6 +3,9 @@ import uuid
 
 from sqlmodel import Field, SQLModel
 
+# Set default schema for all SQLModel models to 'sharink'
+SQLModel.metadata.schema = "sharink"
+
 
 def get_utc_now() -> datetime:
     """Return naive UTC datetime compatible with TIMESTAMP WITHOUT TIME ZONE."""
